@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,maximum-scale=1"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#1A1D27"/>
+<title>TypeWave — AI Transcription Workspace</title>
+<!-- React 18 + Babel (mirrors Next.js/React stack, no build step needed) -->
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ─── RESET ──────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body,#root{height:100%;overflow:hidden;background:#0F1117;color:#F0F4F8;
+  font-family:'Inter',system-ui,sans-serif;font-size:14px;
+  -webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none}
+
+/* ─── TOKENS ─────────────────────────────── */
+:root{
+  --bg:#0F1117;--panel:#1A1D27;--surface:#22263A;--hover:#2A2F47;
+  --amber:#F5A623;--amber2:#e8920a;--aglow:rgba(245,166,35,.13);
+  --hi:#F0F4F8;--mid:#9BAABB;--lo:#5A6A7E;
+  --blue:#4A9EFF;--green:#3DD68C;--red:#FF5C5C;--purple:#C084FC;
+  --border:rgba(255,255,255,.07);--r:8px;
+  --topH:52px;--navH:66px;
+}
+
+/* ─── SCROLLBARS ─────────────────────────── */
+::-webkit-scrollbar{width:3px;height:3px}
+::-webkit-scrollbar-thumb{background:var(--hover);border-radius:9999px}
+
+/* ─── SHELL ──────────────────────────────── */
+.app{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 16px;height:var(--topH);
+  background:var(--panel);border-bottom:1px solid var(--border);flex-shrink:0;position:relative;z-index:100}
+.body{display:flex;flex:1;min-height:0;overflow:hidden;position:relative}
+
+/* ─── PANELS ─────────────────────────────── */
+.panel-left,.panel-right{
+  background:var(--panel);display:flex;flex-direction:column;
+  overflow:hidden;flex-shrink:0;
+  transition:transform .28s cubic-bezier(.4,0,.2,1)}
+.panel-left{width:300px;border-right:1px solid var(--border)}
+.panel-right{width:250px;border-left:1px solid var(--border)}
+
+/* ─── LOGO ───────────────────────────────── */
+.logo{display:flex;align-items:center;gap:8px;font-weight:600;font-size:15px;flex-shrink:0;text-decoration:none;color:inherit}
+.logo-mark{width:28px;height:28px;border-radius:6px;background:linear-gradient(135deg,var(--amber),var(--amber2));
+  display:flex;align-items:center;justify-content:center;font-size:11px;color:#0F1117;
+  font-weight:800;box-shadow:0 2px 10px rgba(245,166,35,.35);flex-shrink:0}
+.logo-wave{color:var(--amber)}
+
+/* ─── FILE CHIP ──────────────────────────── */
+.chip{display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r);padding:4px 10px;font-size:12px;color:var(--mid);cursor:pointer;
+  transition:border-color .15s;max-width:210px;min-width:0}
+.chip:hover{border-color:rgba(255,255,255,.2)}
+.chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ─── BADGES ─────────────────────────────── */
+.badge{padding:3px 9px;border-radius:9999px;font-size:11px;font-weight:500;white-space:nowrap}
+.badge-w{background:var(--surface);color:var(--mid);border:1px solid var(--border)}
+.badge-s{background:rgba(61,214,140,.1);color:var(--green)}
+.badge-a{background:rgba(245,166,35,.1);color:var(--amber);border:1px solid rgba(245,166,35,.2)}
+
+/* ─── BUTTONS ────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--border);
+  color:var(--mid);padding:5px 12px;border-radius:var(--r);cursor:pointer;font-size:12px;
+  font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap;touch-action:manipulation}
+.btn:hover,.btn:active{color:var(--hi);border-color:rgba(255,255,255,.2)}
+.btn-pri{background:var(--amber);color:#0F1117;border:none;font-weight:600;
+  padding:5px 12px;border-radius:var(--r);cursor:pointer;font-size:12px;
+  font-family:'Inter',sans-serif;transition:background .15s;white-space:nowrap;touch-action:manipulation}
+.btn-pri:hover,.btn-pri:active{background:#FFBC44}
+
+/* ─── TRANSPORT ──────────────────────────── */
+.transport{display:flex;align-items:center;justify-content:center;gap:5px;margin-bottom:9px}
+.tbtn{background:var(--surface);border:1px solid var(--border);color:var(--mid);border-radius:50%;
+  width:32px;height:32px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-family:'JetBrains Mono',monospace;transition:all .15s;
+  flex-shrink:0;touch-action:manipulation}
+.tbtn:hover,.tbtn:active{background:var(--hover);color:var(--hi)}
+.tbtn.play{background:var(--amber)!important;color:#0F1117!important;
+  width:44px!important;height:44px!important;font-size:16px!important;
+  border-color:transparent!important;box-shadow:0 2px 14px rgba(245,166,35,.4)}
+.tbtn.play:hover{background:#FFBC44!important}
+
+/* ─── SPEED ──────────────────────────────── */
+.srow{display:flex;gap:3px;margin-bottom:9px}
+.sbtn{flex:1;background:var(--surface);border:1px solid transparent;color:var(--mid);
+  font-size:10px;font-family:'Inter',sans-serif;padding:6px 0;border-radius:4px;
+  cursor:pointer;transition:all .15s;text-align:center;touch-action:manipulation}
+.sbtn.on{background:var(--aglow);border-color:rgba(245,166,35,.4);color:var(--amber);font-weight:600}
+
+/* ─── VOLUME ─────────────────────────────── */
+.vrow{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+.vrow label{font-size:11px;color:var(--lo);flex-shrink:0}
+input[type=range].vsl{-webkit-appearance:none;flex:1;height:4px;background:var(--surface);border-radius:2px;outline:none;cursor:pointer}
+input[type=range].vsl::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--amber);cursor:pointer;box-shadow:0 0 6px rgba(245,166,35,.4)}
+input[type=range].vsl::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--amber);border:none;cursor:pointer}
+.vval{font-size:11px;color:var(--lo);font-family:'JetBrains Mono',monospace;min-width:24px}
+
+/* ─── WAVEFORM ───────────────────────────── */
+.ww{position:relative;height:52px;margin-bottom:7px;cursor:pointer;border-radius:var(--r);overflow:hidden;background:rgba(0,0,0,.3)}
+.ww canvas{width:100%;height:100%;display:block}
+.ph{position:absolute;top:0;bottom:0;width:2px;background:var(--amber);
+  box-shadow:0 0 10px var(--amber),0 0 22px rgba(245,166,35,.3);pointer-events:none}
+.ph::before{content:'';position:absolute;top:-1px;left:50%;transform:translateX(-50%);
+  border:5px solid transparent;border-top:7px solid var(--amber)}
+.trow{display:flex;justify-content:space-between;font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--lo);margin-bottom:9px}
+.tc{color:var(--amber)}
+
+/* ─── SECTION LABEL ──────────────────────── */
+.slbl{display:block;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--lo);margin-bottom:8px}
+.ps{padding:13px 14px 0}
+.divider{height:1px;background:var(--border);flex-shrink:0}
+
+/* ─── AI PANEL ───────────────────────────── */
+.aip{padding:12px 14px;border-bottom:1px solid var(--border)}
+.aih{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+.aiorb{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--amber),var(--amber2));
+  display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;transition:box-shadow .3s}
+.aiorb.live{animation:orbP 1.8s infinite}
+@keyframes orbP{0%,100%{box-shadow:0 0 0 0 rgba(245,166,35,.5)}50%{box-shadow:0 0 0 10px rgba(245,166,35,0)}}
+.aibtn{width:100%;padding:10px 14px;border-radius:var(--r);font-size:13px;font-weight:600;
+  font-family:'Inter',sans-serif;cursor:pointer;transition:all .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;border:none;margin-bottom:8px;touch-action:manipulation}
+.aibtn.idle{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#0F1117;box-shadow:0 2px 16px rgba(245,166,35,.28)}
+.aibtn.idle:hover{box-shadow:0 4px 24px rgba(245,166,35,.4);transform:translateY(-1px)}
+.aibtn.idle:active{transform:scale(.97)}
+.aibtn.on{background:rgba(61,214,140,.1);color:var(--green);border:1px solid rgba(61,214,140,.3);animation:livP 2s infinite}
+@keyframes livP{0%,100%{box-shadow:0 0 0 0 rgba(61,214,140,.25)}50%{box-shadow:0 0 0 6px rgba(61,214,140,0)}}
+.aibtn.off{background:var(--surface);color:var(--mid);border:1px solid var(--border);cursor:default;opacity:.7}
+.mr{width:9px;height:9px;border-radius:50%;background:var(--green);animation:mb 1s infinite;flex-shrink:0}
+@keyframes mb{0%,100%{opacity:1}50%{opacity:.2}}
+.aiopt{display:flex;gap:6px;margin-bottom:8px}
+.aisel{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--mid);
+  font-size:11px;font-family:'Inter',sans-serif;padding:6px 8px;border-radius:5px;
+  cursor:pointer;outline:none;-webkit-appearance:none;appearance:none;transition:all .15s}
+.aisel:focus{border-color:rgba(245,166,35,.4);color:var(--hi)}
+.aitog{padding:6px 9px;border-radius:5px;font-size:11px;font-family:'Inter',sans-serif;
+  cursor:pointer;background:var(--surface);border:1px solid var(--border);
+  color:var(--mid);white-space:nowrap;transition:all .15s;touch-action:manipulation}
+.aitog.on{background:var(--aglow);border-color:rgba(245,166,35,.38);color:var(--amber)}
+.aisr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.aist{font-size:11px;color:var(--lo)}
+.pips{display:flex;gap:2px;align-items:flex-end;height:20px}
+.pip{width:4px;border-radius:2px;background:var(--surface);transition:all .2s;align-self:flex-end}
+.aistat{display:flex;gap:6px}
+.asc{flex:1;background:var(--surface);border-radius:5px;padding:7px 9px;border:1px solid var(--border)}
+.ascv{font-size:16px;font-weight:600;color:var(--hi);font-family:'JetBrains Mono',monospace;line-height:1.2}
+.ascl{font-size:10px;color:var(--lo);margin-top:2px}
+
+/* ─── SHORTCUTS ──────────────────────────── */
+.scrl{flex:1;overflow-y:auto;padding:11px 14px;overscroll-behavior:contain}
+.sg{margin-bottom:12px}
+.sgl{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--lo);margin-bottom:5px}
+.scr{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.scr:last-child{border-bottom:none}
+.scd{font-size:12px;color:var(--mid)}
+.keys{display:flex;gap:3px}
+.key{background:var(--surface);border:1px solid rgba(255,255,255,.1);border-bottom-width:2px;
+  border-radius:3px;padding:1px 5px;font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--mid);line-height:1.7}
+
+/* ─── EDITOR ─────────────────────────────── */
+.ec{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0;background:var(--bg)}
+.etb{border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;
+  gap:5px;background:var(--panel);flex-wrap:wrap;flex-shrink:0;overflow-x:auto}
+.etb::-webkit-scrollbar{display:none}
+.tbb{background:none;border:none;color:var(--mid);cursor:pointer;padding:5px 8px;border-radius:5px;
+  font-size:12px;font-family:'Inter',sans-serif;transition:all .15s;white-space:nowrap;touch-action:manipulation;flex-shrink:0;line-height:1}
+.tbb:hover,.tbb:active{background:var(--surface);color:var(--hi)}
+.tbb.ac{border:1px solid rgba(245,166,35,.3);color:var(--amber)}
+.tbb.ac:hover,.tbb.ac:active{background:var(--aglow)}
+.tsep{width:1px;height:18px;background:var(--border);flex-shrink:0}
+.ttag{background:var(--surface);border:1px solid var(--border);color:var(--mid);
+  padding:4px 7px;border-radius:5px;font-size:11px;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .15s;flex-shrink:0;touch-action:manipulation;line-height:1}
+.ttag:hover,.ttag:active{background:var(--hover);color:var(--hi)}
+.fb{display:flex;padding:7px 12px;border-bottom:1px solid var(--border);background:var(--panel);
+  align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+.fi{background:var(--surface);border:1px solid var(--border);color:var(--hi);
+  padding:6px 10px;border-radius:var(--r);font-size:13px;font-family:'Inter',sans-serif;
+  outline:none;flex:1;min-width:100px;transition:border-color .15s}
+.fi:focus{border-color:rgba(245,166,35,.4)}
+.fi::placeholder{color:var(--lo)}
+.finfo{font-size:11px;color:var(--lo);min-width:50px;white-space:nowrap}
+.fclose{background:none;border:none;color:var(--lo);cursor:pointer;font-size:18px;line-height:1;touch-action:manipulation}
+.fclose:hover{color:var(--hi)}
+.es{flex:1;overflow-y:auto;padding:28px 36px;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.es::-webkit-scrollbar{width:4px}
+#tx{font-family:'JetBrains Mono',monospace;font-size:14px;line-height:2;color:var(--hi);
+  outline:none;white-space:pre-wrap;word-break:break-word;min-height:300px;
+  max-width:780px;margin:0 auto;caret-color:var(--amber);user-select:text;-webkit-user-select:text}
+#tx:empty::before{content:attr(data-ph);color:var(--lo);pointer-events:none;font-style:italic}
+.ts-stamp{display:inline-block;background:var(--aglow);border:1px solid rgba(245,166,35,.3);
+  color:var(--amber);border-radius:4px;padding:0 5px;font-size:11px;font-weight:500;
+  margin:0 2px;vertical-align:middle;cursor:pointer;font-family:'JetBrains Mono',monospace;
+  user-select:none;transition:background .12s}
+.ts-stamp:hover,.ts-stamp.hi{background:rgba(245,166,35,.25);box-shadow:0 0 0 1px rgba(245,166,35,.4)}
+.spk-a{color:var(--blue);font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-right:4px;cursor:default;user-select:none}
+.spk-b{color:var(--purple);font-size:12px;font-weight:600;letter-spacing:.4px;text-transform:uppercase;margin-right:4px;cursor:default;user-select:none}
+.unc{background:rgba(255,92,92,.1);border-radius:3px;padding:1px 4px;color:#FF9090}
+.ai-interim{color:rgba(245,166,35,.45);font-style:italic;border-bottom:1px dashed rgba(245,166,35,.28)}
+.ai-fresh{background:rgba(74,158,255,.07);border-radius:2px;transition:background 2.5s}
+.ai-fresh.fade{background:transparent}
+.sb{border-top:1px solid var(--border);padding:5px 12px;display:flex;align-items:center;
+  gap:10px;background:var(--panel);font-size:11px;color:var(--lo);flex-wrap:wrap;flex-shrink:0}
+.sbi{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%}
+.dot.g{background:var(--green)}.dot.a{background:var(--amber)}.dot.r{background:var(--red)}
+.sbr{margin-left:auto;font-family:'JetBrains Mono',monospace}
+
+/* ─── RIGHT PANEL ────────────────────────── */
+.rpb{padding:12px 14px;border-bottom:1px solid var(--border)}
+.rph{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+.rpp{font-size:22px;font-weight:600}.rpst{font-size:11px;color:var(--lo);font-family:'JetBrains Mono',monospace}
+.rpt{height:4px;background:var(--surface);border-radius:2px;margin-bottom:6px}
+.rpf{height:100%;border-radius:2px;background:linear-gradient(90deg,rgba(245,166,35,.5),var(--amber));transition:width .4s}
+.rpm{display:flex;justify-content:space-between;font-size:11px;color:var(--lo)}
+.qb{padding:9px 14px;border-bottom:1px solid var(--border)}
+.qi{display:flex;align-items:center;gap:8px;padding:6px 7px;border-radius:var(--r);margin-bottom:2px;cursor:pointer;transition:background .13s}
+.qi:hover{background:var(--surface)}
+.qi.aq{background:var(--hover)}
+.qd{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.qd.dn{background:rgba(61,214,140,.12);color:var(--green)}
+.qd.cu{background:var(--aglow);color:var(--amber)}
+.qd.wt{background:var(--surface);color:var(--lo)}
+.qn{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ql{font-size:10px;color:var(--lo);font-family:'JetBrains Mono',monospace;margin-top:1px}
+.qs{font-size:10px}.qs.dn{color:var(--green)}.qs.cu{color:var(--amber)}.qs.wt{color:var(--lo)}
+.flb{padding:9px 14px;border-bottom:1px solid var(--border)}
+.flr{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.flr:last-child{border-bottom:none}
+.fll{font-size:12px;color:var(--mid)}
+.flc{font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--surface);
+  border:1px solid var(--border);border-radius:4px;padding:1px 7px;color:var(--mid);transition:all .2s}
+.flc.w{color:var(--amber);border-color:rgba(245,166,35,.3);background:var(--aglow)}
+.flc.e{color:var(--red);border-color:rgba(255,92,92,.3);background:rgba(255,92,92,.07)}
+.nb{padding:9px 14px;display:flex;flex-direction:column;flex:1;min-height:0}
+.nta{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:9px;resize:none;outline:none;color:var(--mid);font-family:'Inter',sans-serif;
+  font-size:12px;line-height:1.6;caret-color:var(--amber);user-select:text;-webkit-user-select:text;min-height:50px}
+.nta:focus{border-color:rgba(245,166,35,.3)}
+.nta::placeholder{color:var(--lo)}
+.cb{padding:9px 14px;border-top:1px solid var(--border)}
+.cr{margin-bottom:7px}
+.chd{display:flex;justify-content:space-between;margin-bottom:3px}
+.cn2{font-size:11px;color:var(--lo)}.cv2{font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--mid)}
+.ctr{height:3px;background:var(--surface);border-radius:2px}
+.cf{height:100%;border-radius:2px;transition:width .4s}
+.cfg{background:var(--green)}.cfa{background:var(--amber)}
+
+/* ─── TOAST ──────────────────────────────── */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  background:var(--hover);border:1px solid rgba(255,255,255,.12);border-radius:10px;
+  padding:10px 18px;font-size:13px;color:var(--hi);display:flex;align-items:center;
+  gap:8px;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.55);white-space:nowrap;pointer-events:none;
+  animation:toastIn .18s ease}
+@keyframes toastIn{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ─── MOBILE NAV ─────────────────────────── */
+.mob-nav{display:none;background:var(--panel);border-top:1px solid var(--border);
+  height:var(--navH);flex-shrink:0;position:relative;z-index:400;
+  padding-bottom:env(safe-area-inset-bottom,0)}
+.nbb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:4px;cursor:pointer;background:none;border:none;color:var(--lo);
+  font-size:10px;font-family:'Inter',sans-serif;font-weight:500;transition:color .15s;touch-action:manipulation}
+.nbb .ni{font-size:22px;line-height:1;transition:transform .15s}
+.nbb.act{color:var(--amber)}.nbb.act .ni{transform:scale(1.1)}
+.nbb.glv{color:var(--green);animation:navL 1.5s infinite}
+@keyframes navL{0%,100%{opacity:1}50%{opacity:.4}}
+.fab{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;font-size:22px;
+  transition:all .15s;touch-action:manipulation;position:relative;top:-8px;
+  box-shadow:0 4px 18px rgba(0,0,0,.4)}
+.fab.pl{background:linear-gradient(135deg,var(--amber),var(--amber2));color:#0F1117}
+.fab.pa{background:linear-gradient(135deg,var(--green),#28a570);color:#fff}
+.fab:active{transform:scale(.92)}
+
+/* ─── RESPONSIVE ─────────────────────────── */
+@media(max-width:767px){
+  .app{display:flex;flex-direction:column;height:100dvh}
+  .topbar{padding:0 12px;gap:8px}
+  .d-only,.vsep,.badge-w,.badge-a{display:none!important}
+  .chip{max-width:140px;font-size:11px;padding:4px 8px}
+  .panel-left,.panel-right{position:fixed;top:var(--topH);bottom:var(--navH);
+    width:min(88vw,320px);z-index:300;transform:translateX(-110%);
+    overflow-y:auto;-webkit-overflow-scrolling:touch;border:none;border-right:1px solid var(--border)}
+  .panel-left.open{transform:translateX(0)}
+  .panel-right{left:auto;right:0;transform:translateX(110%);border-right:none;border-left:1px solid var(--border)}
+  .panel-right.open{transform:translateX(0)}
+  .mob-overlay{display:block;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.55);
+    opacity:0;pointer-events:none;transition:opacity .22s}
+  .mob-overlay.open{opacity:1;pointer-events:all}
+  .ec{flex:1;min-height:0;overflow:hidden}
+  .es{padding:16px 14px}
+  #tx{font-size:14px;max-width:100%}
+  .etb{overflow-x:auto;flex-wrap:nowrap;gap:4px;padding:6px 10px}
+  .sb{padding:4px 10px}.sbr{display:none}
+  .scrl{display:none}
+  .mob-nav{display:flex}
+  .mob-strip{padding:11px 14px;display:flex;gap:8px;border-bottom:1px solid var(--border)}
+  .toast{bottom:calc(var(--navH) + 8px + env(safe-area-inset-bottom,0))}
+}
+@media(min-width:768px) and (max-width:1023px){
+  .panel-right{display:none}
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react,typescript">
+const { useState, useEffect, useRef, useCallback, createContext, useContext } = React;
+
+/* ═══════════════════════════════════════════
+   TYPES & CONSTANTS
+═══════════════════════════════════════════ */
+const SPEEDS   = [0.5, 0.75, 1, 1.25, 1.5];
+const LANGUAGES = [
+  ["en-US","English (US)"],["en-GB","English (UK)"],["en-AU","English (AU)"],
+  ["es-ES","Español (Spain)"],["es-MX","Español (Mexico)"],["fr-FR","Français"],
+  ["de-DE","Deutsch"],["it-IT","Italiano"],["pt-BR","Português (BR)"],["pt-PT","Português (PT)"],
+  ["ru-RU","Русский"],["ja-JP","日本語"],["zh-CN","中文 (简体)"],["zh-TW","中文 (繁體)"],
+  ["ko-KR","한국어"],["ar-SA","العربية"],["hi-IN","हिन्दी"],["nl-NL","Nederlands"],
+  ["pl-PL","Polski"],["tr-TR","Türkçe"],["sv-SE","Svenska"],["da-DK","Dansk"],
+  ["fi-FI","Suomi"],["nb-NO","Norsk"],["uk-UA","Українська"],["cs-CZ","Čeština"],
+  ["id-ID","Bahasa Indonesia"],["ms-MY","Bahasa Melayu"],["th-TH","ภาษาไทย"],["vi-VN","Tiếng Việt"],
+];
+
+const fmtT = s => {
+  if(!isFinite(s)||s<0)return"0:00:00";
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);
+  return`${h}:${String(m).padStart(2,"0")}:${String(sc).padStart(2,"0")}`;
+};
+const fmtS = s => {
+  if(!isFinite(s)||s<0)return"0:00";
+  return`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,"0")}`;
+};
+const wc = t => t.trim().split(/\s+/).filter(Boolean).length;
+
+/* ═══════════════════════════════════════════
+   TOAST CONTEXT
+═══════════════════════════════════════════ */
+const ToastCtx = createContext({toast:()=>{}});
+function ToastProvider({children}) {
+  const [t,setT] = useState(null);
+  const ref = useRef(null);
+  const toast = useCallback((msg,icon="✓",ms=2400)=>{
+    clearTimeout(ref.current);
+    setT({msg,icon,id:Date.now()});
+    ref.current=setTimeout(()=>setT(null),ms);
+  },[]);
+  return React.createElement(ToastCtx.Provider,{value:{toast}},
+    children,
+    t && React.createElement("div",{key:t.id,className:"toast"},
+      React.createElement("span",null,t.icon),
+      React.createElement("span",null,t.msg)
+    )
+  );
+}
+const useToast = ()=>useContext(ToastCtx);
+
+/* ═══════════════════════════════════════════
+   HOOK: useAudioPlayer
+═══════════════════════════════════════════ */
+function useAudioPlayer() {
+  const audioRef = useRef(null);
+  const urlRef   = useRef(null);
+  const [state,  setState] = useState({
+    fileName:null,duration:0,currentTime:0,isPlaying:false,
+    volume:0.9,speed:1,clarity:0,noise:0
+  });
+  const set = patch => setState(p=>({...p,...patch}));
+
+  useEffect(()=>{
+    const el = new Audio();
+    el.volume  = 0.9;
+    audioRef.current = el;
+    el.addEventListener("play",      ()=>set({isPlaying:true}));
+    el.addEventListener("pause",     ()=>set({isPlaying:false}));
+    el.addEventListener("ended",     ()=>set({isPlaying:false}));
+    el.addEventListener("timeupdate",()=>set({currentTime:el.currentTime}));
+    el.addEventListener("loadedmetadata",()=>set({duration:el.duration}));
+    el.addEventListener("loadeddata",()=>set({
+      clarity:Math.floor(72+Math.random()*20),
+      noise:  Math.floor(25+Math.random()*32)
+    }));
+    return ()=>{ el.pause(); if(urlRef.current)URL.revokeObjectURL(urlRef.current); };
+  },[]);
+
+  const loadFile = useCallback(file=>{
+    const el=audioRef.current; if(!el)return;
+    if(urlRef.current)URL.revokeObjectURL(urlRef.current);
+    urlRef.current=URL.createObjectURL(file);
+    el.src=urlRef.current; el.load();
+    set({fileName:file.name,currentTime:0,duration:0,isPlaying:false,clarity:0,noise:0});
+  },[]);
+
+  const toggle   = useCallback(()=>{ const el=audioRef.current; if(!el||!el.src)return false; el.paused?el.play().catch(()=>{}):(el.pause()); return true; },[]);
+  const seekTo   = useCallback(s=>{ const el=audioRef.current; if(!el)return; el.currentTime=Math.max(0,Math.min(el.duration||0,s)); },[]);
+  const seekBy   = useCallback(d=>{ const el=audioRef.current; if(!el)return; seekTo(el.currentTime+d); },[seekTo]);
+  const setVol   = useCallback(v=>{ const el=audioRef.current; if(!el)return; const c=Math.max(0,Math.min(1,v)); el.volume=c; set({volume:c}); },[]);
+  const setSpd   = useCallback(r=>{ const el=audioRef.current; if(!el)return; el.playbackRate=r; set({speed:r}); },[]);
+  const stepSpd  = useCallback(dir=>{ const idx=SPEEDS.indexOf(state.speed); const n=SPEEDS[idx+dir]; if(n!==undefined)setSpd(n); },[state.speed,setSpd]);
+
+  const progress = state.duration ? state.currentTime/state.duration : 0;
+  return { audioRef,state,progress,loadFile,toggle,seekTo,seekBy,setVol,setSpd,stepSpd, hasFile:!!state.fileName };
+}
+
+/* ═══════════════════════════════════════════
+   HOOK: useWaveform
+═══════════════════════════════════════════ */
+function useWaveform(canvasRef,containerRef,progress) {
+  const dataRef  = useRef([]);
+  const progRef  = useRef(progress);
+  progRef.current = progress;
+
+  const generate = useCallback(n=>{
+    dataRef.current=Array.from({length:n||130},()=>{
+      const b=.15+Math.random()*.74,sp=Math.random()>.82?Math.random()*.24:0,sl=Math.random()>.9?.05:1;
+      return Math.min(1,(b+sp)*sl);
+    });
+  },[]);
+
+  const draw = useCallback(()=>{
+    const canvas=canvasRef.current; if(!canvas)return;
+    const ctx=canvas.getContext("2d"),W=canvas.width,H=canvas.height;
+    const dpr=window.devicePixelRatio||1,data=dataRef.current,prog=progRef.current;
+    ctx.clearRect(0,0,W,H); if(!data.length)return;
+    const bars=data.length,bw=(W/dpr/bars)*dpr,gap=Math.max(1,bw*.28);
+    data.forEach((amp,i)=>{
+      const x=(i/bars)*(W/dpr)*dpr,bh=amp*H*.82,y=(H-bh)/2,past=i/bars<prog;
+      ctx.fillStyle=past?`rgba(245,166,35,${.38+amp*.56})`:`rgba(90,106,126,${.2+amp*.28})`;
+      ctx.beginPath();
+      const bwpx=Math.max(1,bw*dpr-gap);
+      if(ctx.roundRect)ctx.roundRect(x+gap/2,y,bwpx,bh,2); else ctx.rect(x+gap/2,y,bwpx,bh);
+      ctx.fill();
+    });
+    if(prog>0){
+      const g=ctx.createLinearGradient(0,0,prog*W,0);
+      g.addColorStop(0,"rgba(245,166,35,0)");g.addColorStop(1,"rgba(245,166,35,.05)");
+      ctx.fillStyle=g;ctx.fillRect(0,0,prog*W,H);
+    }
+  },[canvasRef]);
+
+  const resize = useCallback(()=>{
+    const canvas=canvasRef.current,cont=containerRef.current; if(!canvas||!cont)return;
+    const dpr=window.devicePixelRatio||1,w=cont.clientWidth,h=cont.clientHeight;
+    canvas.width=w*dpr;canvas.height=h*dpr;canvas.style.width=w+"px";canvas.style.height=h+"px";
+    draw();
+  },[canvasRef,containerRef,draw]);
+
+  useEffect(()=>{ const c=containerRef.current; if(!c)return; const ro=new ResizeObserver(resize); ro.observe(c); resize(); return()=>ro.disconnect(); },[containerRef,resize]);
+  useEffect(()=>draw(),[draw,progress]);
+
+  const xToFrac = useCallback(cx=>{ const c=containerRef.current; if(!c)return 0; const r=c.getBoundingClientRect(); return Math.max(0,Math.min(1,(cx-r.left)/r.width)); },[containerRef]);
+  return {generate,draw,resize,xToFrac};
+}
+
+/* ═══════════════════════════════════════════
+   HOOK: useEditor
+═══════════════════════════════════════════ */
+function useEditor() {
+  const ref          = useRef(null);
+  const interimRef   = useRef(null);
+  const saveTimer    = useRef(null);
+  const [saveStatus, setSS] = useState("saved");
+  const [words,      setW]  = useState(0);
+  const [flags,      setF]  = useState({unclear:0,crosstalk:0,inaudible:0,pause:0,timestamps:0,aiSegs:0});
+  const [notes,      setN]  = useState("");
+  const [curLine,    setCL] = useState(1);
+
+  useEffect(()=>{
+    try{
+      const sv=localStorage.getItem("tw_tx"); if(sv&&ref.current){ref.current.innerHTML=sv;refresh();}
+      setN(localStorage.getItem("tw_notes")||"");
+    }catch(_){}
+  // eslint-disable-next-line
+  },[]);
+  useEffect(()=>{ try{localStorage.setItem("tw_notes",notes);}catch(_){} },[notes]);
+
+  const refresh = useCallback(()=>{
+    const el=ref.current; if(!el)return;
+    setW(wc(el.innerText||""));
+    const h=el.innerHTML;
+    setF({
+      unclear:  (h.match(/\[unclear\]/g) ||[]).length,
+      crosstalk:(h.match(/\[crosstalk\]/g)||[]).length,
+      inaudible:(h.match(/\[inaudible\]/g)||[]).length,
+      pause:    (h.match(/\[pause\]/g)   ||[]).length,
+      timestamps:(h.match(/class="ts-stamp/g)||[]).length,
+      aiSegs:   (h.match(/class="ai-seg/g)||[]).length,
+    });
+  },[]);
+
+  const save = useCallback(()=>{
+    const el=ref.current; if(!el)return;
+    try{ localStorage.setItem("tw_tx",el.innerHTML); setSS("saved"); }
+    catch(_){ setSS("error"); }
+  },[]);
+
+  const dirty = useCallback(()=>{
+    setSS("unsaved"); refresh();
+    clearTimeout(saveTimer.current);
+    saveTimer.current=setTimeout(save,2500);
+  },[refresh,save]);
+
+  const insertHTML = useCallback(html=>{
+    const el=ref.current; if(!el)return;
+    el.focus();
+    const sel=window.getSelection();
+    if(!sel||!sel.rangeCount){
+      const d=document.createElement("div");d.innerHTML=html;
+      while(d.firstChild)el.appendChild(d.firstChild);
+      dirty(); return;
+    }
+    const range=sel.getRangeAt(0); range.deleteContents();
+    const d=document.createElement("div");d.innerHTML=html;
+    const frag=document.createDocumentFragment();let last;
+    while(d.firstChild)last=frag.appendChild(d.firstChild);
+    range.insertNode(frag);
+    if(last){const r=document.createRange();r.setStartAfter(last);r.collapse(true);sel.removeAllRanges();sel.addRange(r);}
+    dirty();
+  },[dirty]);
+
+  const insertTS = useCallback(secs=>{
+    const h=Math.floor(secs/3600),m=Math.floor((secs%3600)/60),s=Math.floor(secs%60);
+    insertHTML(`<span class="ts-stamp" contenteditable="false" data-time="${secs}">${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}</span> `);
+  },[insertHTML]);
+
+  const insertSpk = useCallback((lbl,v)=>{
+    insertHTML(`<span class="${v==="b"?"spk-b":"spk-a"}" contenteditable="false">${lbl}:</span> `);
+  },[insertHTML]);
+
+  const insertFlag = useCallback(type=>{
+    insertHTML(`<span class="unc" contenteditable="false">[${type}]</span> `);
+  },[insertHTML]);
+
+  const clearInterim = useCallback(()=>{
+    if(interimRef.current?.parentNode)interimRef.current.parentNode.removeChild(interimRef.current);
+    interimRef.current=null;
+  },[]);
+
+  const showInterim = useCallback(text=>{
+    const el=ref.current; if(!el)return;
+    clearInterim();
+    const span=document.createElement("span");
+    span.className="ai-interim";span.textContent=text;span.contentEditable="false";
+    el.appendChild(span);interimRef.current=span;
+    const sc=el.closest(".es"); if(sc)sc.scrollTop=sc.scrollHeight;
+  },[clearInterim]);
+
+  const commitAI = useCallback((text,{timestamp,autoPunct})=>{
+    const el=ref.current; clearInterim();
+    if(!el||!text.trim())return;
+    let html="";
+    if(timestamp!=null){
+      const t=timestamp,h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=Math.floor(t%60);
+      html+=`<span class="ts-stamp" contenteditable="false" data-time="${t}">${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}</span> `;
+    }
+    let words=text.trim();
+    if(autoPunct){words=words[0].toUpperCase()+words.slice(1);if(!/[.!?,;]$/.test(words))words+=".";}
+    html+=`<span class="ai-seg ai-fresh" contenteditable="true">${words}</span> `;
+    const d=document.createElement("div");d.innerHTML=html;
+    while(d.firstChild)el.appendChild(d.firstChild);
+    el.querySelectorAll(".ai-fresh:not(.fade)").forEach(n=>setTimeout(()=>n.classList.add("fade"),2500));
+    const sc=el.closest(".es"); if(sc)sc.scrollTop=sc.scrollHeight;
+    dirty();
+  },[clearInterim,dirty]);
+
+  const countOcc = useCallback(q=>{ if(!q)return 0; const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"); return(ref.current?.innerText?.match(re)||[]).length; },[]);
+  const replOne  = useCallback((q,r)=>{ const el=ref.current; if(!el||!q)return 0; const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i"); const n=el.innerHTML.match(re)?1:0; el.innerHTML=el.innerHTML.replace(re,r); dirty(); return n; },[dirty]);
+  const replAll  = useCallback((q,r)=>{ const el=ref.current; if(!el||!q)return 0; const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"); const n=(el.innerHTML.match(re)||[]).length; el.innerHTML=el.innerHTML.replace(re,r); dirty(); return n; },[dirty]);
+
+  const exportTxt= useCallback(name=>{ const el=ref.current; if(!el)return; const cl=el.cloneNode(true); cl.querySelectorAll(".ai-interim").forEach(n=>n.remove()); const blob=new Blob([cl.innerText||""],{type:"text/plain"}); const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=(name||"transcript").replace(/\.[^.]+$/,"")+".txt"; a.click(); URL.revokeObjectURL(a.href); },[]);
+  const clear    = useCallback(()=>{ const el=ref.current; if(!el)return; el.innerHTML=""; dirty(); },[dirty]);
+
+  const updateCursor = useCallback(()=>{
+    const sel=window.getSelection(); const el=ref.current;
+    if(!sel||!sel.rangeCount||!el)return;
+    const range=sel.getRangeAt(0),pre=document.createRange();
+    pre.setStart(el,0);pre.setEnd(range.startContainer,range.startOffset);
+    setCL(pre.toString().split("\n").length);
+  },[]);
+
+  return { ref,saveStatus,words,flags,notes,setN,curLine,save,dirty,refresh,insertTS,insertSpk,insertFlag,showInterim,clearInterim,commitAI,countOcc,replOne,replAll,exportTxt,clear,updateCursor };
+}
+
+/* ═══════════════════════════════════════════
+   HOOK: useAI
+═══════════════════════════════════════════ */
+function useAI(callbacks) {
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  const recogRef  = useRef(null);
+  const activeRef = useRef(false);
+  const confRef   = useRef([]);
+  const [state, setState] = useState({
+    isActive:false,isSupported:!!SR,status:"Ready — tap to begin",
+    language:"en-US",wordCount:0,segCount:0,confidence:null,autoTS:false,autoPunct:true
+  });
+  const set = patch=>setState(p=>({...p,...patch}));
+
+  const start = useCallback(()=>{
+    if(!SR||activeRef.current)return;
+    activeRef.current=true; set({isActive:true});
+    const r=new SR();
+    r.lang=state.language;r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
+    r.onstart=()=>set({status:"Listening — speak now"});
+    r.onspeechstart=()=>set({status:"Speech detected…"});
+    r.onspeechend=()=>set({status:"Listening…"});
+    r.onresult=e=>{
+      let interim="";
+      for(let i=e.resultIndex;i<e.results.length;i++){
+        const res=e.results[i],text=res[0].transcript,conf=res[0].confidence;
+        if(res.isFinal){
+          if(!text.trim())continue;
+          const w=text.trim().split(/\s+/).filter(Boolean).length;
+          if(conf!=null&&conf>0)confRef.current.push(conf);
+          const avg=confRef.current.length?confRef.current.reduce((a,b)=>a+b,0)/confRef.current.length:null;
+          set(p=>({...p,wordCount:p.wordCount+w,segCount:p.segCount+1,confidence:avg}));
+          callbacks.onFinal(text,conf??null);
+          callbacks.onClearInterim();
+        } else interim+=text;
+      }
+      interim?callbacks.onInterim(interim):callbacks.onClearInterim();
+    };
+    r.onerror=e=>{
+      if(e.error==="no-speech"){set({status:"No speech — still listening…"});return;}
+      if(e.error==="not-allowed"||e.error==="permission-denied"){set({status:"Mic access denied"});stop();return;}
+      if(e.error==="aborted")return;
+      set({status:"Error: "+e.error});
+    };
+    r.onend=()=>{ if(activeRef.current)try{r.start();}catch(_){} };
+    recogRef.current=r;
+    try{r.start();}catch(err){activeRef.current=false;set({isActive:false,status:"Could not start mic"});}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[state.language]);
+
+  const stop = useCallback(()=>{
+    activeRef.current=false;
+    if(recogRef.current){try{recogRef.current.abort();}catch(_){}recogRef.current=null;}
+    callbacks.onClearInterim();
+    set({isActive:false,status:"Ready — tap to begin"});
+  },[callbacks]);
+
+  const toggle     = useCallback(()=>activeRef.current?stop():start(),[start,stop]);
+  const setLang    = useCallback(lang=>{ set({language:lang}); if(activeRef.current){stop();setTimeout(start,200);} },[start,stop]);
+  const setAutoTS  = useCallback(v=>set({autoTS:v}),[]);
+  const setAutoPunct=useCallback(v=>set({autoPunct:v}),[]);
+  const resetStats = useCallback(()=>{ confRef.current=[]; set({wordCount:0,segCount:0,confidence:null}); },[]);
+
+  return {state,toggle,start,stop,setLang,setAutoTS,setAutoPunct,resetStats};
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: Waveform
+═══════════════════════════════════════════ */
+function Waveform({progress,onSeek,doGenerate}) {
+  const canvasRef    = useRef(null);
+  const containerRef = useRef(null);
+  const {generate,xToFrac} = useWaveform(canvasRef,containerRef,progress);
+
+  useEffect(()=>{ if(doGenerate)generate(110+Math.floor(Math.random()*44)); },[doGenerate,generate]);
+
+  return React.createElement("div",{
+    ref:containerRef,className:"ww",
+    onClick:e=>onSeek(xToFrac(e.clientX)),
+    onTouchEnd:e=>{e.preventDefault();if(!e.touches.length)onSeek(xToFrac(e.changedTouches[0].clientX));},
+  },
+    React.createElement("canvas",{ref:canvasRef}),
+    React.createElement("div",{className:"ph",style:{left:`${progress*100}%`}})
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: AudioPanel
+═══════════════════════════════════════════ */
+function AudioPanel({state,progress,hasFile,doGenerate,onLoad,onToggle,onSeekBy,onSeekFrac,onSetSpd,onSetVol}) {
+  const fileRef=useRef(null);
+  return React.createElement("div",{className:"ps",style:{paddingBottom:11}},
+    React.createElement("span",{className:"slbl"},"Audio Player"),
+    React.createElement("div",{style:{display:"flex",alignItems:"center",gap:9,marginBottom:10}},
+      React.createElement("button",{
+        onClick:()=>fileRef.current?.click(),
+        style:{width:34,height:34,borderRadius:8,background:"rgba(245,166,35,.13)",
+          border:"1px solid rgba(245,166,35,.22)",display:"flex",alignItems:"center",
+          justifyContent:"center",color:"var(--amber)",fontSize:14,cursor:"pointer",flexShrink:0}
+      },"♪"),
+      React.createElement("input",{ref:fileRef,type:"file",accept:"audio/*,video/*",style:{display:"none"},
+        onChange:e=>e.target.files?.[0]&&onLoad(e.target.files[0])}),
+      React.createElement("div",{style:{minWidth:0,flex:1}},
+        React.createElement("div",{style:{fontSize:12,fontWeight:500,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}},
+          state.fileName||"No file loaded"),
+        React.createElement("div",{style:{fontSize:11,fontFamily:"var(--font-mono,monospace)",color:"var(--lo)",marginTop:2}},
+          hasFile?`${fmtS(state.currentTime)} / ${fmtS(state.duration)}`:"Tap ♪ or drop a file to begin")
+      )
+    ),
+    React.createElement(Waveform,{progress,onSeek:f=>onSeekFrac(f),doGenerate}),
+    React.createElement("div",{className:"trow"},
+      React.createElement("span",{className:"tc"},fmtT(state.currentTime)),
+      React.createElement("span",null,fmtT(state.duration))
+    ),
+    React.createElement("div",{className:"transport"},
+      ["«15","«5"].map((lbl,i)=>React.createElement("button",{key:lbl,className:"tbtn",onClick:()=>onSeekBy(i===0?-15:-5)},lbl)),
+      React.createElement("button",{className:"tbtn play",onClick:onToggle},state.isPlaying?"⏸":"▶"),
+      ["5»","15»"].map((lbl,i)=>React.createElement("button",{key:lbl,className:"tbtn",onClick:()=>onSeekBy(i===0?5:15)},lbl))
+    ),
+    React.createElement("div",{className:"srow"},
+      SPEEDS.map(s=>React.createElement("button",{
+        key:s,className:`sbtn${state.speed===s?" on":""}`,onClick:()=>onSetSpd(s)
+      },`${s}×`))
+    ),
+    React.createElement("div",{className:"vrow"},
+      React.createElement("label",null,"Vol"),
+      React.createElement("input",{
+        type:"range",className:"vsl",min:0,max:100,
+        value:Math.round(state.volume*100),
+        onChange:e=>onSetVol(Number(e.target.value)/100)
+      }),
+      React.createElement("span",{className:"vval"},Math.round(state.volume*100))
+    )
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: AIPanel
+═══════════════════════════════════════════ */
+function AIPanel({state,onToggle,onLang,onAutoTS,onAutoPunct}) {
+  const lvl = state.confidence!=null?Math.ceil(state.confidence*5):0;
+  const pipColors=["#FF5C5C","#F5A623","#3DD68C","#3DD68C","#3DD68C"];
+  const pipH=[7,10,13,16,20];
+  return React.createElement("div",{className:"aip"},
+    React.createElement("div",{className:"aih"},
+      React.createElement("div",{className:`aiorb${state.isActive?" live":""}`},"✦"),
+      React.createElement("div",null,
+        React.createElement("div",{style:{fontSize:13,fontWeight:600}},"AI Auto-Transcribe"),
+        React.createElement("div",{style:{fontSize:11,color:"var(--mid)",marginTop:1}},
+          state.isActive?"Listening — speak clearly":"Real-time speech recognition")
+      )
+    ),
+    state.isSupported
+      ? React.createElement("button",{
+          className:`aibtn${state.isActive?" on":" idle"}`,onClick:onToggle
+        },
+          state.isActive
+            ? [React.createElement("div",{key:"r",className:"mr"}),React.createElement("span",{key:"l"},"Stop AI Transcription")]
+            : [React.createElement("span",{key:"i"},"🎙"),React.createElement("span",{key:"l"},"Start AI Transcription")]
+        )
+      : React.createElement("div",{className:"aibtn off"},"⚠ Use Chrome or Edge for AI"),
+    React.createElement("div",{className:"aiopt"},
+      React.createElement("select",{className:"aisel",value:state.language,onChange:e=>onLang(e.target.value)},
+        LANGUAGES.map(([v,l])=>React.createElement("option",{key:v,value:v},l))
+      ),
+      React.createElement("button",{className:`aitog${state.autoTS?" on":""}`,onClick:onAutoTS},"⊕ TS"),
+      React.createElement("button",{className:`aitog${state.autoPunct?" on":""}`,onClick:onAutoPunct},"¶ Punct")
+    ),
+    React.createElement("div",{className:"aisr"},
+      React.createElement("span",{className:"aist"},state.status),
+      React.createElement("div",{className:"pips"},
+        Array.from({length:5},(_,i)=>React.createElement("div",{
+          key:i,className:"pip",
+          style:{height:i<lvl?`${pipH[i]}px`:"4px",background:i<lvl?pipColors[i]:"var(--surface)"}
+        }))
+      )
+    ),
+    React.createElement("div",{className:"aistat"},
+      [["AI Words",state.wordCount],["Segments",state.segCount],["Confidence",state.confidence!=null?`${Math.round(state.confidence*100)}%`:"—"]]
+        .map(([l,v])=>React.createElement("div",{key:l,className:"asc"},
+          React.createElement("div",{className:"ascv"},v),
+          React.createElement("div",{className:"ascl"},l)
+        ))
+    )
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: ShortcutsPanel
+═══════════════════════════════════════════ */
+const SHORTCUTS=[
+  {g:"Playback",items:[{d:"Play / Pause",k:["F4"]},{d:"Back 5s / 15s",k:["F1","⇧F1"]},{d:"Speed up / down",k:["F3","F2"]},{d:"Volume ±5%",k:["↑","↓"]}]},
+  {g:"AI",items:[{d:"Toggle AI listen",k:["Ctrl","L"]}]},
+  {g:"Editing",items:[{d:"Insert timestamp",k:["Ctrl","T"]},{d:"Speaker A / B",k:["Ctrl","1/2"]},{d:"Mark unclear",k:["Ctrl","U"]},{d:"Find & Replace",k:["Ctrl","H"]},{d:"Save",k:["Ctrl","S"]},{d:"Export",k:["Ctrl","E"]}]},
+];
+function ShortcutsPanel() {
+  return React.createElement("div",{className:"scrl"},
+    SHORTCUTS.map(({g,items})=>React.createElement("div",{key:g,className:"sg"},
+      React.createElement("div",{className:"sgl"},g),
+      items.map(({d,k})=>React.createElement("div",{key:d,className:"scr"},
+        React.createElement("span",{className:"scd"},d),
+        React.createElement("div",{className:"keys"},k.map(key=>React.createElement("span",{key,className:"key"},key)))
+      ))
+    ))
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: StatsPanel
+═══════════════════════════════════════════ */
+function StatsPanel({progress,currentTime,duration,wpm,flags,notes,setNotes,clarity,noise,aiSegs}) {
+  const pct=Math.round(progress*100);
+  const rem=duration-currentTime;
+  const QUEUE=[
+    {n:"intro_briefing.mp3",l:"12:04",s:"Done",d:"dn"},
+    {n:"(current file)",l:fmtS(duration)||"—",s:"Active",d:"cu",active:true},
+    {n:"panel_discussion.mp3",l:"1:22:10",s:"Queued",d:"wt"},
+  ];
+  const FLAGS=[
+    {k:"unclear",lbl:"Unclear",w:true},{k:"crosstalk",lbl:"Crosstalk",w:true},
+    {k:"inaudible",lbl:"Inaudible",e:true},{k:"timestamps",lbl:"Timestamps"},{k:"aiSegs",lbl:"AI Segments"},
+  ];
+  const fmap={...flags,aiSegs};
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100%",overflowY:"auto"}},
+    // Progress
+    React.createElement("div",{className:"ps",style:{paddingBottom:0}},React.createElement("span",{className:"slbl"},"Progress")),
+    React.createElement("div",{className:"rpb"},
+      React.createElement("div",{className:"rph"},
+        React.createElement("span",{className:"rpp"},`${pct}%`),
+        React.createElement("span",{className:"rpst"},`${fmtS(currentTime)} / ${fmtS(duration)}`)
+      ),
+      React.createElement("div",{className:"rpt"},React.createElement("div",{className:"rpf",style:{width:`${pct}%`}})),
+      React.createElement("div",{className:"rpm"},
+        React.createElement("span",null,rem>0?`${fmtS(rem)} remaining`:"Complete"),
+        React.createElement("span",null,wpm>0?`${wpm} WPM`:"— WPM")
+      )
+    ),
+    // Queue
+    React.createElement("div",{className:"ps",style:{paddingBottom:0}},React.createElement("span",{className:"slbl"},"Queue")),
+    React.createElement("div",{className:"qb"},
+      QUEUE.map((q,i)=>React.createElement("div",{key:i,className:`qi${q.active?" aq":""}`},
+        React.createElement("div",{className:`qd ${q.d}`},{dn:"✓",cu:"▶",wt:"○"}[q.d]),
+        React.createElement("div",{style:{flex:1,minWidth:0}},
+          React.createElement("div",{className:"qn"},q.n),
+          React.createElement("div",{className:"ql"},q.l)
+        ),
+        React.createElement("span",{className:`qs ${q.d}`},q.s)
+      ))
+    ),
+    // Flags
+    React.createElement("div",{className:"ps",style:{paddingBottom:0}},React.createElement("span",{className:"slbl"},"Flags")),
+    React.createElement("div",{className:"flb"},
+      FLAGS.map(({k,lbl,w,e})=>React.createElement("div",{key:k,className:"flr"},
+        React.createElement("span",{className:"fll"},lbl),
+        React.createElement("span",{className:`flc${fmap[k]>0?e?" e":" w":""}` },fmap[k])
+      ))
+    ),
+    // Notes
+    React.createElement("div",{className:"ps",style:{paddingBottom:0}},React.createElement("span",{className:"slbl"},"Session Notes")),
+    React.createElement("div",{className:"nb"},
+      React.createElement("textarea",{className:"nta",value:notes,onChange:e=>setNotes(e.target.value),
+        placeholder:"Jot speaker names, corrections, follow-ups…"})
+    ),
+    // Quality
+    React.createElement("div",{className:"cb"},
+      React.createElement("span",{className:"slbl",style:{marginBottom:7}},"Audio Quality"),
+      [["Clarity",clarity,"cfg"],["Background noise",noise,"cfa"]].map(([l,v,c])=>
+        React.createElement("div",{key:l,className:"cr"},
+          React.createElement("div",{className:"chd"},React.createElement("span",{className:"cn2"},l),React.createElement("span",{className:"cv2"},v?`${v}%`:"—")),
+          React.createElement("div",{className:"ctr"},React.createElement("div",{className:`cf ${c}`,style:{width:`${v}%`}}))
+        )
+      )
+    )
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: TranscriptEditor
+═══════════════════════════════════════════ */
+function TranscriptEditor({editorRef,words,saveStatus,elapsed,wpm,aiActive,curLine,curTime,onInsertTS,onInsertSpkA,onInsertSpkB,onInsertFlag,onClear,onReplOne,onReplAll,onInput,onToast}) {
+  const [fbOpen,setFbOpen]=useState(false);
+  const [findQ,setFindQ]=useState("");
+  const [repQ, setRepQ] =useState("");
+  const [finfo,setFinfo]=useState("—");
+  const editorScrollRef=useRef(null);
+
+  const toggleFb=useCallback(()=>{
+    setFbOpen(v=>{
+      if(!v)setTimeout(()=>document.getElementById("find-in")?.focus(),50);
+      else{setFindQ("");setRepQ("");setFinfo("—");}
+      return!v;
+    });
+  },[]);
+
+  const handleFindChange=useCallback(q=>{
+    setFindQ(q);
+    if(!q){setFinfo("—");return;}
+    const re=new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi");
+    const n=(editorRef.current?.innerText?.match(re)||[]).length;
+    setFinfo(n?`${n} found`:"0 found");
+  },[editorRef]);
+
+  const DOT={"saved":"g","unsaved":"a","error":"r"}[saveStatus];
+  const SAVELBL={"saved":"Saved","unsaved":"Unsaved…","error":"Cannot save"}[saveStatus];
+  const FLAGS=["unclear","crosstalk","pause","inaudible"];
+
+  return React.createElement("div",{className:"ec"},
+    // Toolbar
+    React.createElement("div",{className:"etb"},
+      React.createElement("button",{className:"tbb ac",onClick:onInsertTS},"⊕ Timestamp"),
+      React.createElement("div",{className:"tsep"}),
+      React.createElement("button",{className:"tbb",onClick:onInsertSpkA},"Spk A"),
+      React.createElement("button",{className:"tbb",onClick:onInsertSpkB},"Spk B"),
+      React.createElement("div",{className:"tsep"}),
+      FLAGS.map(f=>React.createElement("button",{key:f,className:"ttag",onClick:()=>onInsertFlag(f)},`[${f}]`)),
+      React.createElement("div",{className:"tsep"}),
+      React.createElement("button",{className:"tbb",onClick:toggleFb},"⌕ Find"),
+      React.createElement("button",{
+        className:"tbb",style:{marginLeft:"auto",opacity:.6},
+        onClick:()=>{
+          if(!editorRef.current?.innerText?.trim())return;
+          if(!confirm("Clear all transcript text? Cannot be undone."))return;
+          onClear();onToast("Cleared","✕");
+        }
+      },"✕ Clear")
+    ),
+    // Find bar
+    fbOpen && React.createElement("div",{className:"fb"},
+      React.createElement("input",{id:"find-in",className:"fi",value:findQ,placeholder:"Find…",autoComplete:"off",onChange:e=>handleFindChange(e.target.value)}),
+      React.createElement("input",{className:"fi",value:repQ,placeholder:"Replace with…",autoComplete:"off",onChange:e=>setRepQ(e.target.value)}),
+      React.createElement("span",{className:"finfo"},finfo),
+      React.createElement("button",{className:"tbb",onClick:()=>{const n=onReplOne(findQ,repQ);if(n)onToast("Replaced 1","✓");}},  "Replace"),
+      React.createElement("button",{className:"tbb",onClick:()=>{const n=onReplAll(findQ,repQ);if(n)onToast(`Replaced ${n}`,"✓");}}, "All"),
+      React.createElement("button",{className:"fclose",onClick:toggleFb},"✕")
+    ),
+    // Editable area
+    React.createElement("div",{className:"es",ref:editorScrollRef},
+      React.createElement("div",{
+        id:"tx",contentEditable:true,suppressContentEditableWarning:true,spellCheck:true,
+        "data-ph":"Load an audio file and start typing — or tap ✦ Start AI Transcription to auto-transcribe. F4 to play/pause · Ctrl+T for timestamps.",
+        ref:editorRef,onInput:onInput,
+        onClick:e=>{
+          const t=e.target.closest(".ts-stamp");
+          if(t){
+            document.querySelectorAll(".ts-stamp").forEach(s=>s.classList.remove("hi"));
+            t.classList.add("hi");
+          }
+        }
+      })
+    ),
+    // Status bar
+    React.createElement("div",{className:"sb"},
+      React.createElement("div",{className:"sbi"},React.createElement("div",{className:`dot ${DOT}`}),React.createElement("span",null,SAVELBL)),
+      React.createElement("span",{className:"sbi"},elapsed),
+      React.createElement("span",{className:"sbi"},wpm>0?`${wpm} WPM`:"— WPM"),
+      aiActive && React.createElement("span",{style:{color:"var(--green)"}}, "✦ AI"),
+      React.createElement("span",{className:"sbr"},`Ln ${curLine} · ${curTime}`)
+    )
+  );
+}
+
+/* ═══════════════════════════════════════════
+   COMPONENT: MobileNav
+═══════════════════════════════════════════ */
+function MobileNav({activeTab,isPlaying,aiActive,onTab,onPlayToggle}) {
+  const tabs=[["audio","♪","Audio"],["ai",aiActive?"⏹":"✦","AI"],null,["edit","✎","Editor"],["stats","📊","Stats"]];
+  return React.createElement("nav",{className:"mob-nav"},
+    tabs.map((t,i)=>!t
+      ? React.createElement("button",{key:"fab",className:`fab ${isPlaying?"pa":"pl"}`,onClick:onPlayToggle},isPlaying?"⏸":"▶")
+      : React.createElement("button",{
+          key:t[0],
+          className:`nbb${activeTab===t[0]?" act":""}${t[0]==="ai"&&aiActive?" glv":""}`,
+          onClick:()=>onTab(t[0])
+        },
+          React.createElement("span",{className:"ni"},t[1]),
+          React.createElement("span",null,t[2])
+        )
+    )
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MAIN APP
+═══════════════════════════════════════════ */
+function App() {
+  const {toast} = useToast();
+  const player  = useAudioPlayer();
+  const editor  = useEditor();
+
+  const ai = useAI({
+    onInterim:      t=>editor.showInterim(t),
+    onClearInterim: ()=>editor.clearInterim(),
+    onFinal:(text,conf)=>editor.commitAI(text,{
+      timestamp:ai.state.autoTS?player.state.currentTime:null,
+      autoPunct:ai.state.autoPunct
+    }),
+  });
+
+  // Session timer
+  const [elapsed,setElapsed]=useState("0:00");
+  const [wpm,    setWpm]    =useState(0);
+  const sessionStart=useRef(Date.now());
+  useEffect(()=>{
+    const id=setInterval(()=>{
+      const s=Math.round((Date.now()-sessionStart.current)/1000);
+      const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+      setElapsed(`${h?h+":":""}${String(m).padStart(2,"0")}:${String(sc).padStart(2,"0")}`);
+      const w=wc(editor.ref.current?.innerText||"");
+      setWpm(s>30?Math.round(w/(s/60)):0);
+    },1000);
+    return()=>clearInterval(id);
+  },[editor.ref]);
+
+  // Drag & drop
+  useEffect(()=>{
+    const over=e=>e.preventDefault();
+    const drop=e=>{
+      e.preventDefault();
+      const f=[...e.dataTransfer.files].find(f=>f.type.startsWith("audio/")||f.type.startsWith("video/"));
+      if(f){player.loadFile(f);setTrigger(v=>!v);toast("Loaded: "+f.name,"♪");}
+    };
+    window.addEventListener("dragover",over);
+    window.addEventListener("drop",drop);
+    return()=>{window.removeEventListener("dragover",over);window.removeEventListener("drop",drop);};
+  },[player,toast]);
+
+  // Keyboard
+  useEffect(()=>{
+    const h=e=>{
+      const inF=["INPUT","TEXTAREA"].includes(document.activeElement?.tagName||"");
+      if(e.key==="F4"){e.preventDefault();handleToggle();return;}
+      if(e.key==="F1"&&!e.shiftKey){e.preventDefault();player.seekBy(-5);return;}
+      if(e.key==="F1"&&e.shiftKey){e.preventDefault();player.seekBy(-15);return;}
+      if(e.key==="F2"){e.preventDefault();player.stepSpd(-1);return;}
+      if(e.key==="F3"){e.preventDefault();player.stepSpd(1);return;}
+      if(!inF){
+        if(e.key==="ArrowUp"){e.preventDefault();player.setVol(player.state.volume+.05);return;}
+        if(e.key==="ArrowDown"){e.preventDefault();player.setVol(player.state.volume-.05);return;}
+      }
+      if(e.ctrlKey||e.metaKey){
+        if(e.key==="l"||e.key==="L"){e.preventDefault();ai.toggle();return;}
+        if(e.key==="t"||e.key==="T"){e.preventDefault();editor.insertTS(player.state.currentTime);toast("Timestamp inserted","⊕");return;}
+        if(e.key==="1"){e.preventDefault();editor.insertSpk("SPK-A","a");return;}
+        if(e.key==="2"){e.preventDefault();editor.insertSpk("SPK-B","b");return;}
+        if(e.key==="u"||e.key==="U"){e.preventDefault();editor.insertFlag("unclear");toast("[unclear] marked","⚑");return;}
+        if(e.key==="s"||e.key==="S"){e.preventDefault();editor.save();toast("Saved","💾");return;}
+        if(e.key==="e"||e.key==="E"){e.preventDefault();editor.exportTxt(player.state.fileName||"transcript");toast("Exported","↓");return;}
+      }
+      if(e.key==="Escape")closeDrawer();
+    };
+    window.addEventListener("keydown",h);
+    return()=>window.removeEventListener("keydown",h);
+  // eslint-disable-next-line
+  },[player,editor,ai,toast]);
+
+  // Mobile drawer
+  const [drawer,setDrawer]=useState(null);
+  const [navTab, setNavTab]=useState("edit");
+  const [trigger,setTrigger]=useState(false);
+
+  const openDrawer=useCallback(side=>{ setDrawer(p=>p===side?null:side); },[]);
+  const closeDrawer=useCallback(()=>{setDrawer(null);setNavTab("edit");},[]);
+
+  const handleToggle=useCallback(()=>{
+    if(!player.hasFile){toast("Load an audio file first","♪");return;}
+    player.toggle();
+  },[player,toast]);
+
+  const handleNav=useCallback(tab=>{
+    if(window.innerWidth>=768)return;
+    if(tab==="edit"){closeDrawer();setNavTab("edit");return;}
+    if(tab==="ai"){
+      if(ai.state.isActive){ai.stop();return;}
+      openDrawer("left");setNavTab("ai");
+      setTimeout(()=>document.querySelector(".aip")?.scrollIntoView({behavior:"smooth",block:"start"}),220);
+      return;
+    }
+    if(tab==="audio"){openDrawer("left");setNavTab("audio");return;}
+    if(tab==="stats"){openDrawer("right");setNavTab("stats");return;}
+  },[ai,closeDrawer,openDrawer]);
+
+  const leftContent=React.createElement(React.Fragment,null,
+    React.createElement(AudioPanel,{state:player.state,progress:player.progress,hasFile:player.hasFile,
+      doGenerate:trigger,onLoad:f=>{player.loadFile(f);setTrigger(v=>!v);toast("Loaded: "+f.name,"♪");},
+      onToggle:handleToggle,onSeekBy:player.seekBy,
+      onSeekFrac:f=>player.seekTo(f*player.state.duration),
+      onSetSpd:player.setSpd,onSetVol:player.setVol}),
+    React.createElement("div",{className:"divider"}),
+    React.createElement(AIPanel,{state:ai.state,onToggle:ai.toggle,onLang:ai.setLang,
+      onAutoTS:()=>ai.setAutoTS(!ai.state.autoTS),
+      onAutoPunct:()=>ai.setAutoPunct(!ai.state.autoPunct)}),
+    React.createElement("div",{className:"divider"}),
+    // Mobile action strip
+    React.createElement("div",{className:"mob-strip"},
+      React.createElement("button",{className:"btn",style:{flex:1,textAlign:"center"},
+        onClick:()=>{editor.exportTxt(player.state.fileName||"transcript");toast("Exported","↓");}
+      },"Export .txt"),
+      React.createElement("button",{className:"btn-pri",style:{flex:1,textAlign:"center",borderRadius:"var(--r)"},
+        onClick:()=>{if(ai.state.isActive)ai.stop();editor.save();toast("Marked complete ✓","✓");}
+      },"Complete")
+    ),
+    React.createElement("div",{className:"divider"}),
+    React.createElement("div",{className:"ps",style:{paddingTop:12,paddingBottom:0}},
+      React.createElement("span",{className:"slbl"},"Shortcuts")),
+    React.createElement(ShortcutsPanel)
+  );
+
+  return React.createElement("div",{className:"app"},
+    // Topbar
+    React.createElement("header",{className:"topbar"},
+      React.createElement("button",{
+        className:"d-none",id:"hambBtn",
+        style:{display:"none",flexDirection:"column",gap:4,alignItems:"center",justifyContent:"center",
+          width:36,height:36,borderRadius:8,background:"var(--surface)",border:"1px solid var(--border)",
+          cursor:"pointer",flexShrink:0},
+        onClick:()=>openDrawer(drawer==="left"?null:"left")
+      },
+        [0,1,2].map(i=>React.createElement("span",{key:i,style:{width:15,height:2,background:"var(--mid)",borderRadius:1,display:"block"}}))
+      ),
+      React.createElement("a",{className:"logo",href:"index.html",title:"Back to TypeWave home",style:{cursor:"pointer"}},
+        React.createElement("div",{className:"logo-mark"},"TW"),
+        React.createElement("span",null,"Type",React.createElement("span",{className:"logo-wave"},"Wave"))
+      ),
+      React.createElement("div",{className:"vsep d-only"}),
+      React.createElement("label",{className:"chip"},
+        React.createElement("span",{style:{opacity:.5,fontSize:11,flexShrink:0}},"♪"),
+        React.createElement("span",null,player.state.fileName||"Load audio or video"),
+        React.createElement("input",{type:"file",accept:"audio/*,video/*",style:{display:"none"},
+          onChange:e=>{if(e.target.files?.[0]){player.loadFile(e.target.files[0]);setTrigger(v=>!v);toast("Loaded: "+e.target.files[0].name,"♪");}}})
+      ),
+      React.createElement("div",{style:{marginLeft:"auto",display:"flex",alignItems:"center",gap:7}},
+        React.createElement("span",{className:"badge badge-w d-only"},`${editor.words} word${editor.words!==1?"s":""}`),
+        React.createElement("span",{className:"badge badge-s"},player.state.isPlaying?"● Playing":"● Ready"),
+        ai.state.isActive && React.createElement("span",{className:"badge badge-a"},"✦ AI On"),
+        React.createElement("button",{className:"btn d-only",onClick:()=>{editor.exportTxt(player.state.fileName||"transcript");toast("Exported","↓");}},"Export .txt"),
+        React.createElement("button",{className:"btn-pri d-only",
+          onClick:()=>{if(ai.state.isActive)ai.stop();editor.save();toast("Marked complete ✓","✓");}
+        },"Mark Complete")
+      )
+    ),
+
+    // Body
+    React.createElement("div",{className:"body"},
+      // Overlay
+      React.createElement("div",{className:`mob-overlay${drawer?" open":""}`,onClick:closeDrawer}),
+
+      // Left panel
+      React.createElement("aside",{className:`panel-left${drawer==="left"?" open":""}`},
+        React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100%",overflowY:"auto",overflowX:"hidden"}},
+          leftContent
+        )
+      ),
+
+      // Editor
+      React.createElement(TranscriptEditor,{
+        editorRef:editor.ref,words:editor.words,saveStatus:editor.saveStatus,
+        elapsed,wpm,aiActive:ai.state.isActive,curLine:editor.curLine,curTime:fmtT(player.state.currentTime),
+        onInsertTS:()=>{editor.insertTS(player.state.currentTime);toast("Timestamp inserted","⊕");},
+        onInsertSpkA:()=>editor.insertSpk("SPK-A","a"),
+        onInsertSpkB:()=>editor.insertSpk("SPK-B","b"),
+        onInsertFlag:editor.insertFlag,
+        onClear:()=>{editor.clear();ai.resetStats();},
+        onReplOne:editor.replOne,onReplAll:editor.replAll,
+        onInput:editor.dirty,onToast:toast
+      }),
+
+      // Right panel
+      React.createElement("aside",{className:`panel-right${drawer==="right"?" open":""}`},
+        React.createElement(StatsPanel,{
+          progress:player.progress,currentTime:player.state.currentTime,
+          duration:player.state.duration,wpm,flags:editor.flags,
+          notes:editor.notes,setNotes:editor.setN,
+          clarity:player.state.clarity,noise:player.state.noise,
+          aiSegs:ai.state.segCount
+        })
+      )
+    ),
+
+    // Mobile nav
+    React.createElement(MobileNav,{activeTab:navTab,isPlaying:player.state.isPlaying,
+      aiActive:ai.state.isActive,onTab:handleNav,onPlayToggle:handleToggle})
+  );
+}
+
+/* ═══════════════════════════════════════════
+   MOBILE: Show hamburger on small screens
+═══════════════════════════════════════════ */
+function applyMobileChrome() {
+  const btn=document.getElementById("hambBtn");
+  if(btn)btn.style.display=window.innerWidth<768?"flex":"none";
+}
+window.addEventListener("resize",applyMobileChrome);
+document.addEventListener("DOMContentLoaded",applyMobileChrome);
+
+/* ═══════════════════════════════════════════
+   BOOT
+═══════════════════════════════════════════ */
+const root=ReactDOM.createRoot(document.getElementById("root"));
+root.render(React.createElement(ToastProvider,null,React.createElement(App)));
+</script>
+</body>
+</html>
