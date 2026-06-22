@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <title>TypeWave — Transcribe at the speed of speech</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
@@ -56,7 +56,41 @@ nav{
   box-shadow:0 2px 12px rgba(245,166,35,.25);
 }
 .btn-launch:hover{background:#FFBC44;transform:translateY(-1px)}
-@media(max-width:760px){.nav-links{display:none}}
+
+.nav-burger{
+  display:none;flex-direction:column;gap:4px;align-items:center;justify-content:center;
+  width:36px;height:36px;border-radius:8px;background:var(--surface);
+  border:1px solid var(--border);cursor:pointer;flex-shrink:0;margin-left:auto;
+}
+.nav-burger span{width:16px;height:2px;background:var(--mid);border-radius:1px;display:block;transition:all .2s}
+.nav-burger.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+.nav-burger.open span:nth-child(2){opacity:0}
+.nav-burger.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+.mobile-menu{
+  display:none;position:fixed;top:57px;left:0;right:0;z-index:99;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  padding:8px 20px 18px;flex-direction:column;gap:2px;
+  max-height:calc(100vh - 57px);overflow-y:auto;
+  box-shadow:0 16px 32px -12px rgba(0,0,0,.5);
+}
+.mobile-menu.open{display:flex}
+.mobile-menu a{
+  font-size:15px;color:var(--mid);padding:13px 4px;border-bottom:1px solid var(--border);
+}
+.mobile-menu a:last-of-type{border-bottom:none}
+.mobile-menu .mm-cta{
+  margin-top:10px;text-align:center;background:var(--amber);color:#0F1117;
+  font-weight:600;padding:12px;border-radius:10px;border-bottom:none;
+}
+
+@media(max-width:760px){
+  .nav-links{display:none}
+  .btn-ghost{display:none}
+  .nav-burger{display:flex}
+  .navbar{padding:12px 16px}
+  .btn-launch{padding:7px 14px;font-size:12.5px}
+}
 
 /* ───────── HERO ───────── */
 .hero{position:relative;padding:96px 24px 70px;overflow:hidden}
@@ -301,11 +335,85 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
 .foot-links{display:flex;gap:24px;font-size:13px;color:var(--lo)}
 .foot-links a:hover{color:var(--mid)}
 
+/* ───────── RESPONSIVE: TABLET (≤860px) ───────── */
+@media(max-width:860px){
+  .hero{padding:64px 20px 50px}
+  .hero h1{font-size:44px}
+  .demo-stage{max-width:100%}
+}
+
+/* ───────── RESPONSIVE: PHONE (≤600px) ───────── */
 @media(max-width:600px){
-  .hero h1{font-size:38px}
-  .hero p.sub{font-size:16px}
-  .demo-stage{padding:20px 18px;margin-top:40px}
-  .features-head h2,.workflow-head h2,.cta h2{font-size:28px}
+  .wrap{padding:0 18px}
+
+  /* Hero */
+  .hero{padding:48px 18px 40px}
+  .hero h1{font-size:32px;letter-spacing:-1px;line-height:1.15}
+  .hero p.sub{font-size:15.5px;padding:0 4px}
+  .eyebrow{font-size:11px;padding:5px 12px;text-align:center}
+  .hero-cta{flex-direction:column;align-items:stretch;gap:10px}
+  .btn-primary,.btn-secondary{justify-content:center;width:100%;padding:14px 20px;font-size:14.5px}
+  .hero-meta{font-size:12px;padding:0 8px}
+
+  /* Demo stage */
+  .demo-stage{padding:18px 16px;margin-top:32px;border-radius:14px}
+  .demo-top{margin-bottom:14px}
+  .demo-badge{font-size:11px;padding:4px 8px}
+  .demo-time{font-size:11px}
+  #wave-canvas{height:52px;margin-bottom:14px}
+  .demo-transcript{font-size:13px;line-height:1.75;min-height:70px}
+  .ts-tag{font-size:11px;padding:0 4px;margin-right:4px}
+
+  /* Trust */
+  .trust{padding:36px 18px}
+  .trust-row{gap:20px 28px;font-size:13px}
+
+  /* Features */
+  .features{padding:56px 18px}
+  .features-head h2,.workflow-head h2,.cta h2,.pricing-head h2{font-size:26px;letter-spacing:-.5px}
+  .features-head p,.workflow-head p,.pricing-head p{font-size:14.5px}
+  .features-head{margin-bottom:40px}
+  .feature-grid{gap:14px}
+  .feature-card{padding:22px 20px}
+  .feature-sample{font-size:11.5px;padding:10px 12px}
+
+  /* Workflow */
+  .workflow{padding:56px 18px}
+  .workflow-head{margin-bottom:40px}
+  .wstep{padding:0 8px}
+
+  /* Pricing */
+  .pricing{padding:56px 18px}
+  .pricing-head{margin-bottom:8px}
+  .billing-toggle{margin:24px auto 40px;gap:8px;flex-wrap:wrap;padding:0 8px}
+  .billing-toggle span{font-size:13px}
+  .save-badge{font-size:10px;padding:3px 7px}
+  .pricing-grid{gap:16px}
+  .price-card{padding:26px 22px}
+  .price-card.featured{transform:none}
+  .price-amount .num{font-size:36px}
+  .price-naira{font-size:12px}
+  .price-features li{font-size:13px}
+  .pricing-footnote{font-size:12.5px;line-height:1.6;padding:0 8px}
+
+  /* Final CTA */
+  .cta{padding:64px 18px}
+  .cta p{font-size:14.5px}
+
+  /* Footer */
+  footer{padding:28px 18px}
+  .foot-inner{flex-direction:column;align-items:flex-start;gap:18px}
+  .foot-links{gap:18px;flex-wrap:wrap}
+}
+
+/* ───────── RESPONSIVE: SMALL PHONE (≤380px) ───────── */
+@media(max-width:380px){
+  .hero h1{font-size:28px}
+  .logo{font-size:14px}
+  .logo-mark{width:26px;height:26px;font-size:10px}
+  .btn-launch{padding:6px 11px;font-size:11.5px}
+  .price-amount .num{font-size:32px}
+  .demo-badge span:not(.live-dot){display:none}
 }
 </style>
 </head>
@@ -327,6 +435,16 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
       <a href="#" class="btn-ghost">Sign in</a>
       <a href="typewave.html" class="btn-launch" id="navLaunch">Launch app →</a>
     </div>
+    <button class="nav-burger" id="navBurger" aria-label="Open menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#demo">Demo</a>
+    <a href="#features">Features</a>
+    <a href="#workflow">How it works</a>
+    <a href="#pricing">Pricing</a>
+    <a href="typewave.html" class="mm-cta" id="mmLaunch">✦ Launch app</a>
   </div>
 </nav>
 
@@ -763,6 +881,34 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
 })();
 
 /* ═══════════════════════════════════════════
+   Mobile nav — hamburger menu toggle
+   ═══════════════════════════════════════════ */
+(function () {
+  const burger = document.getElementById('navBurger');
+  const menu   = document.getElementById('mobileMenu');
+  if (!burger || !menu) return;
+
+  function close() {
+    burger.classList.remove('open');
+    burger.setAttribute('aria-expanded', 'false');
+    menu.classList.remove('open');
+  }
+  function toggle() {
+    const isOpen = menu.classList.contains('open');
+    if (isOpen) close();
+    else {
+      burger.classList.add('open');
+      burger.setAttribute('aria-expanded', 'true');
+      menu.classList.add('open');
+    }
+  }
+
+  burger.addEventListener('click', toggle);
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', close));
+  window.addEventListener('resize', () => { if (window.innerWidth > 760) close(); });
+})();
+
+/* ═══════════════════════════════════════════
    Launch app — connects to the main TypeWave
    application (typewave.html, same folder).
    If you deploy the app at a different path
@@ -770,7 +916,7 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
    APP_URL below and every launch link updates.
    ═══════════════════════════════════════════ */
 const APP_URL = 'typewave.html';
-['navLaunch', 'heroLaunch', 'ctaLaunch'].forEach(id => {
+['navLaunch', 'heroLaunch', 'ctaLaunch', 'mmLaunch'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.setAttribute('href', APP_URL);
 });
