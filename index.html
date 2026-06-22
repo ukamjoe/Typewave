@@ -189,6 +189,97 @@ nav{
 .wstep h4{font-size:15px;font-weight:600;margin-bottom:8px}
 .wstep p{font-size:13.5px;color:var(--mid);line-height:1.6}
 
+/* ───────── PRICING ───────── */
+.pricing{padding:90px 24px}
+.pricing-head{max-width:560px;margin:0 auto 16px;text-align:center}
+.pricing-head h2{font-size:36px;font-weight:700;letter-spacing:-.8px;margin-bottom:14px}
+.pricing-head p{color:var(--mid);font-size:16px;line-height:1.6}
+
+.billing-toggle{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  margin:32px auto 56px;
+}
+.billing-toggle span{font-size:14px;color:var(--mid);transition:color .15s}
+.billing-toggle span.active{color:var(--hi);font-weight:600}
+.switch{
+  position:relative;width:46px;height:26px;background:var(--surface);
+  border:1px solid var(--border);border-radius:999px;cursor:pointer;flex-shrink:0;
+}
+.switch::after{
+  content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;
+  border-radius:50%;background:var(--mid);transition:all .2s;
+}
+.switch.on{background:var(--aglow);border-color:rgba(245,166,35,.4)}
+.switch.on::after{left:22px;background:var(--amber)}
+.save-badge{
+  font-size:11px;font-weight:600;color:var(--green);background:rgba(61,214,140,.12);
+  padding:3px 9px;border-radius:999px;margin-left:2px;
+}
+
+.pricing-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:20px;
+  max-width:1080px;margin:0 auto;align-items:stretch;
+}
+@media(max-width:900px){.pricing-grid{grid-template-columns:1fr;max-width:420px}}
+
+.price-card{
+  background:var(--panel);border:1px solid var(--border);border-radius:16px;
+  padding:32px 28px;display:flex;flex-direction:column;
+  transition:border-color .2s,transform .2s;position:relative;
+}
+.price-card:hover{border-color:rgba(255,255,255,.16);transform:translateY(-3px)}
+.price-card.featured{
+  border-color:rgba(245,166,35,.45);
+  background:linear-gradient(160deg,rgba(245,166,35,.06),var(--panel) 55%);
+  box-shadow:0 24px 60px -24px rgba(245,166,35,.25);
+}
+.price-card.featured:hover{border-color:rgba(245,166,35,.6)}
+.price-badge{
+  position:absolute;top:-13px;left:50%;transform:translateX(-50%);
+  background:var(--amber);color:#0F1117;font-size:11px;font-weight:700;
+  letter-spacing:.3px;padding:5px 14px;border-radius:999px;
+  box-shadow:0 4px 14px rgba(245,166,35,.4);white-space:nowrap;
+}
+.price-name{font-size:18px;font-weight:700;margin-bottom:6px}
+.price-tagline{font-size:13.5px;color:var(--mid);margin-bottom:24px;line-height:1.5}
+.price-amount{display:flex;align-items:baseline;gap:4px;margin-bottom:4px}
+.price-amount .num{font-size:42px;font-weight:700;letter-spacing:-1px;font-family:'JetBrains Mono',monospace}
+.price-amount .period{font-size:14px;color:var(--lo)}
+.price-naira{
+  font-size:13px;color:var(--mid);font-family:'JetBrains Mono',monospace;
+  margin-bottom:4px;display:flex;align-items:baseline;gap:5px;
+}
+.price-naira .approx{color:var(--lo);font-family:'Inter',sans-serif;font-size:11px}
+.price-note{font-size:12.5px;color:var(--lo);margin-bottom:26px;min-height:18px}
+
+.price-cta{
+  display:block;text-align:center;font-size:14px;font-weight:600;
+  padding:12px;border-radius:10px;margin-bottom:26px;transition:all .18s;
+}
+.price-cta.primary{background:var(--amber);color:#0F1117;box-shadow:0 4px 18px rgba(245,166,35,.3)}
+.price-cta.primary:hover{background:#FFBC44;transform:translateY(-1px)}
+.price-cta.secondary{background:var(--surface);color:var(--hi);border:1px solid var(--border)}
+.price-cta.secondary:hover{background:var(--hover);border-color:rgba(255,255,255,.18)}
+
+.price-features{display:flex;flex-direction:column;gap:11px;flex:1}
+.price-features li{
+  display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--mid);
+  line-height:1.5;list-style:none;
+}
+.price-features li .check{
+  flex-shrink:0;width:16px;height:16px;border-radius:50%;
+  background:rgba(61,214,140,.15);color:var(--green);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;margin-top:1px;
+}
+.price-features li.dim{color:var(--lo)}
+.price-features li.dim .check{background:var(--surface);color:var(--lo)}
+
+.pricing-footnote{
+  text-align:center;margin-top:48px;font-size:13.5px;color:var(--lo);
+}
+.pricing-footnote a{color:var(--amber);text-decoration:underline;text-decoration-color:rgba(245,166,35,.3)}
+
 /* ───────── FINAL CTA ───────── */
 .cta{padding:100px 24px;text-align:center;position:relative}
 .cta-glow{
@@ -230,6 +321,7 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
       <a href="#demo">Demo</a>
       <a href="#features">Features</a>
       <a href="#workflow">How it works</a>
+      <a href="#pricing">Pricing</a>
     </div>
     <div class="nav-right">
       <a href="#" class="btn-ghost">Sign in</a>
@@ -359,6 +451,94 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
   </div>
 </section>
 
+<!-- ═══ PRICING ═══ -->
+<section class="pricing" id="pricing">
+  <div class="pricing-head">
+    <h2>Simple pricing, no surprises</h2>
+    <p>Start free. Upgrade only when you're transcribing enough to need it.</p>
+  </div>
+
+  <div class="billing-toggle">
+    <span class="active" id="monthlyLabel">Monthly</span>
+    <div class="switch" id="billingSwitch" role="switch" aria-checked="false" tabindex="0"></div>
+    <span id="annualLabel">Annual</span>
+    <span class="save-badge">Save 20%</span>
+  </div>
+
+  <div class="pricing-grid">
+
+    <!-- Free -->
+    <div class="price-card">
+      <div class="price-name">Free</div>
+      <div class="price-tagline">Try the full workflow, no card required.</div>
+      <div class="price-amount">
+        <span class="num">$0</span>
+        <span class="period">/forever</span>
+      </div>
+      <div class="price-naira"><span class="approx">≈</span><span class="ngn-val" data-usd="0">₦0</span></div>
+      <div class="price-note">&nbsp;</div>
+      <a href="typewave.html" class="price-cta secondary">Start free</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> 60 minutes of AI transcription / month</li>
+        <li><span class="check">✓</span> Real-time waveform player</li>
+        <li><span class="check">✓</span> Timestamps &amp; speaker tagging</li>
+        <li><span class="check">✓</span> Plain-text export</li>
+        <li class="dim"><span class="check">–</span> No usage rollover</li>
+        <li class="dim"><span class="check">–</span> Single device only</li>
+      </ul>
+    </div>
+
+    <!-- Pro (featured) -->
+    <div class="price-card featured">
+      <div class="price-badge">Most popular</div>
+      <div class="price-name">Pro</div>
+      <div class="price-tagline">For anyone transcribing regularly — podcasters, journalists, researchers.</div>
+      <div class="price-amount">
+        <span class="num" data-monthly="19" data-annual="15">$19</span>
+        <span class="period">/month</span>
+      </div>
+      <div class="price-naira"><span class="approx">≈</span><span class="ngn-val" data-monthly="19" data-annual="15">₦0</span><span class="approx">/month</span></div>
+      <div class="price-note" data-monthly="Billed monthly" data-annual="Billed annually at $180/yr">Billed monthly</div>
+      <a href="typewave.html" class="price-cta primary">Start 14-day free trial</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> Unlimited AI transcription</li>
+        <li><span class="check">✓</span> 30 languages</li>
+        <li><span class="check">✓</span> Auto-timestamps &amp; auto-punctuation</li>
+        <li><span class="check">✓</span> Unclear / crosstalk flagging</li>
+        <li><span class="check">✓</span> Priority processing speed</li>
+        <li><span class="check">✓</span> Sync across devices</li>
+      </ul>
+    </div>
+
+    <!-- Team -->
+    <div class="price-card">
+      <div class="price-name">Team</div>
+      <div class="price-tagline">Shared workspaces for newsrooms, studios, and research teams.</div>
+      <div class="price-amount">
+        <span class="num" data-monthly="49" data-annual="39">$49</span>
+        <span class="period">/user/mo</span>
+      </div>
+      <div class="price-naira"><span class="approx">≈</span><span class="ngn-val" data-monthly="49" data-annual="39">₦0</span><span class="approx">/user/mo</span></div>
+      <div class="price-note" data-monthly="Billed monthly" data-annual="Billed annually at $468/yr per user">Billed monthly</div>
+      <a href="#" class="price-cta secondary">Contact sales</a>
+      <ul class="price-features">
+        <li><span class="check">✓</span> Everything in Pro</li>
+        <li><span class="check">✓</span> Shared transcript library</li>
+        <li><span class="check">✓</span> Team usage dashboard</li>
+        <li><span class="check">✓</span> Role-based permissions</li>
+        <li><span class="check">✓</span> Centralized billing</li>
+        <li><span class="check">✓</span> Priority support</li>
+      </ul>
+    </div>
+
+  </div>
+
+  <p class="pricing-footnote">
+    Naira prices are estimated at ~₦1,550/$1 and may vary slightly at checkout.<br>
+    Need more than 5 seats or a custom contract? <a href="#">Talk to us →</a>
+  </p>
+</section>
+
 <!-- ═══ FINAL CTA ═══ -->
 <section class="cta">
   <div class="cta-glow"></div>
@@ -376,6 +556,7 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
     <div class="foot-links">
       <a href="#features">Features</a>
       <a href="#workflow">How it works</a>
+      <a href="#pricing">Pricing</a>
       <a href="typewave.html">Launch app</a>
     </div>
   </div>
@@ -522,6 +703,63 @@ footer{border-top:1px solid var(--border);padding:36px 24px}
     });
   }, { threshold: 0.4 });
   io.observe(stage);
+})();
+
+/* ═══════════════════════════════════════════
+   Pricing — monthly / annual toggle
+   ═══════════════════════════════════════════ */
+(function () {
+  const sw = document.getElementById('billingSwitch');
+  const monthlyLabel = document.getElementById('monthlyLabel');
+  const annualLabel = document.getElementById('annualLabel');
+  const nums = document.querySelectorAll('.price-amount .num[data-monthly]');
+  const notes = document.querySelectorAll('.price-note[data-monthly]');
+  const ngnVals = document.querySelectorAll('.ngn-val');
+
+  // Approximate USD → NGN rate. Update this as the exchange rate moves.
+  const USD_TO_NGN = 1550;
+
+  function formatNaira(usd) {
+    const ngn = Math.round(usd * USD_TO_NGN);
+    return '₦' + ngn.toLocaleString('en-NG');
+  }
+
+  let annual = false;
+
+  function render() {
+    sw.classList.toggle('on', annual);
+    sw.setAttribute('aria-checked', String(annual));
+    monthlyLabel.classList.toggle('active', !annual);
+    annualLabel.classList.toggle('active', annual);
+
+    nums.forEach(el => {
+      const val = annual ? el.dataset.annual : el.dataset.monthly;
+      el.textContent = '$' + val;
+    });
+    notes.forEach(el => {
+      el.textContent = annual ? el.dataset.annual : el.dataset.monthly;
+    });
+    ngnVals.forEach(el => {
+      const usd = el.dataset.usd != null
+        ? Number(el.dataset.usd)
+        : Number(annual ? el.dataset.annual : el.dataset.monthly);
+      el.textContent = formatNaira(usd);
+    });
+  }
+
+  function toggle() {
+    annual = !annual;
+    render();
+  }
+
+  sw.addEventListener('click', toggle);
+  sw.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+  });
+  monthlyLabel.addEventListener('click', () => { if (annual) toggle(); });
+  annualLabel.addEventListener('click', () => { if (!annual) toggle(); });
+
+  render();
 })();
 
 /* ═══════════════════════════════════════════
