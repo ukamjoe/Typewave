@@ -1,41 +1,76 @@
-# TypeWave
+# TypeWave — Combined App (Auth + Paywall + Video Annotator)
 
-AI-powered transcription workspace — load audio, let AI transcribe it in real time, edit and export.
+Everything from both feature builds merged into one structure: Google auth,
+Stripe/Paystack upgrade flow, and the AI video action annotator gated behind Pro.
 
-## Files
+## Structure
+```
+sql/01_auth_and_billing.sql          → profiles table, run first
+sql/02_video_annotations.sql         → video_annotations table, run second
 
-- **`index.html`** — Landing page with a live animated demo
-- **`typewave.html`** — The transcription app itself (React, runs via CDN — no build step needed)
+react/src/lib/supabase.js            → Supabase client
+react/src/lib/extractFrames.js       → client-side frame grabber
+react/src/context/AuthContext.jsx    → auth state, Google sign-in, isPro flag
+react/src/app/auth/callback/route.js → OAuth callback
 
-The two pages are cross-linked: the landing page's "Launch app" buttons open `typewave.html`, and the TypeWave logo inside the app links back to `index.html`.
+react/src/components/LoginButton.jsx
+react/src/components/ProtectedFeature.jsx   → generic Pro-gate wrapper
+react/src/components/UpgradeModal.jsx       → Stripe/Paystack picker
+react/src/components/VideoAnnotator.jsx     → annotator UI, wrapped in ProtectedFeature
+react/src/components/Dashboard.jsx          → the page that ties it all together
 
-## Running locally
+react/api/checkout/stripe/route.js
+react/api/checkout/paystack/route.js
+react/api/webhooks/stripe/route.js
+react/api/webhooks/paystack/route.js
+react/api/analyze-video/route.js            → Claude vision call, the annotator's brain
 
-No install required. Just open `index.html` in a browser (Chrome or Edge recommended — AI transcription uses the Web Speech API, which isn't supported in Firefox/Safari).
-
-```bash
-# from the repo folder
-python3 -m http.server 8000
-# then visit http://localhost:8000
+static/typewave-app.html             → same thing, single-file, no build step
 ```
 
-## Deploying
+## What's gated behind Pro vs free
+- **Free**: sign in, upload, transcribe, capped minutes, copy-text-only export
+- **Pro**: full export formats, unlimited minutes, priority processing, **and the AI
+  action annotator** — gating this one matters most since every "Suggest" click is a
+  real Claude API cost, not just a UI convenience feature.
 
-Works on any static host — GitHub Pages, Vercel, Netlify, S3, etc. Just upload both files to the same folder; the relative links (`typewave.html`, `index.html`) will resolve automatically.
+## Setup order
+1. Run both SQL files in Supabase, in order (`01` then `02` — `02` doesn't depend on
+   `01` but keeping the order avoids confusion later).
+2. Enable Google in Supabase Authentication > Providers (needs Google Cloud OAuth
+   credentials — see the earlier auth README for the exact steps if you still have it).
+3. Env vars (Vercel project settings):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL
+   NEXT_PUBLIC_SUPABASE_ANON_KEY
+   SUPABASE_SERVICE_ROLE_KEY
+   STRIPE_SECRET_KEY
+   STRIPE_PRICE_ID
+   STRIPE_WEBHOOK_SECRET
+   PAYSTACK_SECRET_KEY
+   PAYSTACK_PLAN_CODE        (optional)
+   ANTHROPIC_API_KEY
+   NEXT_PUBLIC_SITE_URL
+   ```
+4. Add `@anthropic-ai/sdk` to `package.json` dependencies (edit via GitHub web editor).
+5. Drop the `react/` files into matching paths in your Typewave repo. `Dashboard.jsx`
+   is meant to be your `app/dashboard/page.js` — adjust the import paths if you place
+   components elsewhere.
+6. Set up the Stripe and Paystack webhook endpoints pointing at
+   `/api/webhooks/stripe` and `/api/webhooks/paystack` (see dashboards for each).
+7. Redeploy.
 
-### GitHub Pages
-1. Push this repo
-2. Repo → Settings → Pages → Source: `main` branch, root folder
-3. Your landing page will be live at `https://<username>.github.io/Typewave/`
+## If you're keeping the static HTML version alongside the React app
+`static/typewave-app.html` is the same flow condensed into one file — paste it into
+your existing static page before `</body>`. It still calls the same `/api/*` routes,
+so both versions can share one Vercel deployment and one set of secrets.
 
-## Features
-
-- Real-time AI transcription (30 languages) via the Web Speech API
-- Waveform audio player with speed control (0.5×–1.5×) and seek
-- Timestamps, speaker tagging, and unclear/crosstalk flags
-- Auto-save to localStorage, plain-text export
-- Fully responsive — desktop 3-column layout, mobile drawer + bottom nav
-
-## Stack
-
-Built with React 18 (via CDN + Babel standalone) so it runs as static HTML with zero build tooling. A full Next.js/TypeScript version of the same app (with proper hooks, typed components, and a real build pipeline) is available on request for production deployment with SSR and API routes.
+## What changed from the two separate builds
+- `VideoAnnotator.jsx` now wraps its own UI in `ProtectedFeature` internally, so you
+  can drop `<VideoAnnotator />` anywhere and it handles its own gating — no need to
+  wrap it yourself at the call site.
+- `Dashboard.jsx` is new: a single page showing nav + auth, upload, transcript export
+  (Pro-gated), and the annotator (Pro-gated) all together, matching the layout you
+  previewed earlier.
+- Everything shares one `AuthProvider`, one `profiles.is_pro` flag, and one upgrade
+  modal — a single upgrade unlocks both the export formats and the annotator.

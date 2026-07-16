@@ -1,0 +1,310 @@
+<!--
+  TypeWave — Combined Static Version
+  ====================================
+  Auth (Google via Supabase) + paid feature gating + Pro-gated video annotator,
+  all in one drop-in file. No build step required.
+
+  SETUP: same as the earlier static auth file — replace SUPABASE_URL/ANON_KEY,
+  and this still needs the /api/checkout/*, /api/webhooks/*, and /api/analyze-video
+  serverless routes from the react/api folder (secret keys can't live client-side).
+-->
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+
+<nav id="auth-container">
+  <div class="logo">Type<span>Wave</span> <span id="pro-badge" class="pro-tag" style="display:none;">PRO</span></div>
+  <button id="google-signin-btn" class="auth-btn">Sign in with Google</button>
+  <div id="user-info" style="display:none;">
+    <img id="user-avatar" width="26" height="26" style="border-radius:50%;" />
+    <span id="user-name"></span>
+    <button id="signout-btn">Sign out</button>
+  </div>
+</nav>
+
+<div class="card">
+  <h3>Upload a video</h3>
+  <p>Audio or video files — transcription and action-annotation both start here.</p>
+  <input type="file" id="video-input" accept="video/*,audio/*" />
+</div>
+
+<div class="card">
+  <h3>Transcript export</h3>
+  <p>Free: copy text only. Pro: PDF, SRT, DOCX.</p>
+  <button class="feature-btn locked" data-requires-pro="true" data-label="Export PDF / SRT / DOCX">
+    🔒 Export PDF / SRT / DOCX (Pro)
+  </button>
+</div>
+
+<div class="card">
+  <h3>AI action annotator</h3>
+  <p>Detects task-relevant moments in a demo video, filters out idle motion. Pro only — each analysis costs an AI call.</p>
+
+  <div id="annotator-locked" class="feature-btn locked" data-requires-pro="true" data-label="Suggest task-relevant moments">
+    🔒 Suggest task-relevant moments (Pro)
+  </div>
+
+  <div id="annotator-unlocked" style="display:none;">
+    <video id="preview-video" controls style="width:100%; border-radius:12px; background:#000; margin-bottom:10px;"></video>
+    <button id="suggest-btn" class="unlocked-btn">Suggest task-relevant moments</button>
+    <div id="timeline" class="timeline"></div>
+    <div id="anno-list"></div>
+    <button id="save-btn" class="save-btn">Save confirmed annotations</button>
+  </div>
+</div>
+
+<div id="upgrade-modal">
+  <div class="upgrade-modal-content">
+    <h2>Upgrade to Pro</h2>
+    <p>Unlock unlimited transcription, export, priority processing, and AI action annotation.</p>
+    <button id="pay-stripe-btn">Pay with card (USD)</button>
+    <button id="pay-paystack-btn">Pay with Paystack (NGN)</button>
+    <button id="close-upgrade-modal">Maybe later</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  // ---- CONFIG ----
+  const SUPABASE_URL = 'https://YOUR-PROJECT.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR-ANON-KEY';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUser = null;
+  let isPro = false;
+  let selectedVideoFile = null;
+  let annotations = [];
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  // ---- AUTH ----
+  async function initAuth() {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    handleSession(session);
+    supabaseClient.auth.onAuthStateChange((_e, session) => handleSession(session));
+  }
+
+  async function handleSession(session) {
+    currentUser = session?.user ?? null;
+    const signinBtn = document.getElementById('google-signin-btn');
+    const userInfo = document.getElementById('user-info');
+    const proBadge = document.getElementById('pro-badge');
+
+    if (currentUser) {
+      signinBtn.style.display = 'none';
+      userInfo.style.display = 'flex';
+      document.getElementById('user-avatar').src = currentUser.user_metadata?.avatar_url || '';
+      document.getElementById('user-name').textContent = currentUser.user_metadata?.full_name || currentUser.email;
+
+      const { data: profile } = await supabaseClient.from('profiles').select('is_pro').eq('id', currentUser.id).single();
+      isPro = profile?.is_pro === true;
+    } else {
+      signinBtn.style.display = 'block';
+      userInfo.style.display = 'none';
+      isPro = false;
+    }
+    proBadge.style.display = isPro ? 'inline-block' : 'none';
+    applyPaywallState();
+  }
+
+  function applyPaywallState() {
+    document.querySelectorAll('[data-requires-pro="true"]').forEach((el) => {
+      if (isPro) { el.classList.remove('locked'); } else { el.classList.add('locked'); }
+    });
+    document.getElementById('annotator-locked').style.display = isPro ? 'none' : 'block';
+    document.getElementById('annotator-unlocked').style.display = isPro ? 'block' : 'none';
+  }
+
+  document.getElementById('google-signin-btn').addEventListener('click', async () => {
+    await supabaseClient.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.href } });
+  });
+  document.getElementById('signout-btn').addEventListener('click', async () => { await supabaseClient.auth.signOut(); });
+
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('[data-requires-pro="true"].locked')) {
+      e.preventDefault();
+      if (!currentUser) { document.getElementById('google-signin-btn').click(); }
+      else { document.getElementById('upgrade-modal').style.display = 'flex'; }
+    }
+  });
+  document.getElementById('close-upgrade-modal').addEventListener('click', () => {
+    document.getElementById('upgrade-modal').style.display = 'none';
+  });
+
+  document.getElementById('pay-stripe-btn').addEventListener('click', async () => {
+    const res = await fetch('/api/checkout/stripe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id, email: currentUser.email }),
+    });
+    const data = await res.json();
+    if (data.url) window.location.href = data.url;
+  });
+  document.getElementById('pay-paystack-btn').addEventListener('click', async () => {
+    const res = await fetch('/api/checkout/paystack', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUser.id, email: currentUser.email }),
+    });
+    const data = await res.json();
+    if (data.authorization_url) window.location.href = data.authorization_url;
+  });
+
+  // ---- VIDEO UPLOAD ----
+  document.getElementById('video-input').addEventListener('change', (e) => {
+    selectedVideoFile = e.target.files[0];
+    if (selectedVideoFile) {
+      document.getElementById('preview-video').src = URL.createObjectURL(selectedVideoFile);
+    }
+  });
+
+  // ---- FRAME EXTRACTION (client-side, no ffmpeg) ----
+  async function extractFrames(file, intervalSeconds = 2, maxFrames = 200) {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'auto'; video.muted = true; video.playsInline = true;
+      const url = URL.createObjectURL(file);
+      video.src = url;
+      const frames = [];
+      const canvas = document.createElement('canvas');
+      let t = 0;
+
+      video.addEventListener('loadedmetadata', () => {
+        canvas.width = Math.min(video.videoWidth, 640);
+        canvas.height = Math.round(canvas.width * (video.videoHeight / video.videoWidth));
+        next();
+      });
+      function next() {
+        if (t > video.duration || frames.length >= maxFrames) { URL.revokeObjectURL(url); resolve(frames); return; }
+        video.currentTime = t;
+      }
+      video.addEventListener('seeked', () => {
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        frames.push({ timestamp: Math.round(t * 10) / 10, dataUrl: canvas.toDataURL('image/jpeg', 0.7) });
+        t += intervalSeconds;
+        next();
+      });
+      video.addEventListener('error', reject);
+    });
+  }
+
+  // ---- AI SUGGEST ----
+  document.getElementById('suggest-btn').addEventListener('click', async () => {
+    if (!selectedVideoFile) { showToast('Upload a video first'); return; }
+    const btn = document.getElementById('suggest-btn');
+    btn.disabled = true;
+    btn.textContent = 'Extracting frames...';
+
+    const frames = await extractFrames(selectedVideoFile, 2, 200);
+    const CHUNK = 40;
+    let all = [];
+    for (let i = 0; i < frames.length; i += CHUNK) {
+      btn.textContent = `Analyzing... ${Math.round((i / frames.length) * 100)}%`;
+      const res = await fetch('/api/analyze-video', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ frames: frames.slice(i, i + CHUNK) }),
+      });
+      const data = await res.json();
+      if (data.suggestions) all = [...all, ...data.suggestions];
+    }
+    annotations = [
+      ...annotations.filter(a => a.source === 'manual'),
+      ...all.sort((a, b) => a.timestamp - b.timestamp).map((s, i) => ({ id: 'ai-' + i, ...s, source: 'ai', status: 'pending' })),
+    ];
+    btn.disabled = false;
+    btn.textContent = 'Suggest task-relevant moments';
+    renderAnnotations();
+  });
+
+  function renderAnnotations() {
+    const video = document.getElementById('preview-video');
+    const duration = video.duration || 1;
+    const timeline = document.getElementById('timeline');
+    const list = document.getElementById('anno-list');
+
+    timeline.innerHTML = '';
+    annotations.filter(a => a.status !== 'rejected').forEach(a => {
+      const m = document.createElement('div');
+      m.className = 'marker' + (a.status === 'confirmed' ? ' confirmed' : '');
+      m.style.left = `${(a.timestamp / duration) * 100}%`;
+      m.title = a.label;
+      m.onclick = () => { video.currentTime = a.timestamp; };
+      timeline.appendChild(m);
+    });
+
+    list.innerHTML = '';
+    annotations.filter(a => a.status !== 'rejected').sort((a, b) => a.timestamp - b.timestamp).forEach(a => {
+      const card = document.createElement('div');
+      card.className = 'anno-card';
+      card.innerHTML = `
+        <div class="anno-top">
+          <button class="ts-btn">${a.timestamp}s</button>
+          ${a.confidence != null ? `<span class="confidence">${Math.round(a.confidence * 100)}% confidence</span>` : ''}
+        </div>
+        <input class="label-input" value="${a.label}" />
+        ${a.reasoning ? `<div class="reasoning">${a.reasoning}</div>` : ''}
+        ${a.status === 'pending' ? `<div class="actions"><button class="confirm-btn">Confirm</button><button class="reject-btn">Reject</button></div>` : ''}
+      `;
+      card.querySelector('.ts-btn').onclick = () => { video.currentTime = a.timestamp; };
+      card.querySelector('.label-input').oninput = (e) => { a.label = e.target.value; };
+      const cb = card.querySelector('.confirm-btn');
+      if (cb) cb.onclick = () => { a.status = 'confirmed'; renderAnnotations(); };
+      const rb = card.querySelector('.reject-btn');
+      if (rb) rb.onclick = () => { a.status = 'rejected'; renderAnnotations(); };
+      list.appendChild(card);
+    });
+  }
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const toSave = annotations.filter(a => a.status === 'confirmed').map(a => ({
+      user_id: currentUser.id, video_id: selectedVideoFile?.name || 'unknown',
+      timestamp_seconds: a.timestamp, label: a.label, reasoning: a.reasoning || null,
+      confidence: a.confidence, source: a.source, status: 'confirmed',
+    }));
+    if (toSave.length === 0) { showToast('No confirmed annotations'); return; }
+    const { error } = await supabaseClient.from('video_annotations').insert(toSave);
+    showToast(error ? 'Save failed' : `Saved ${toSave.length} annotation(s)`);
+  });
+
+  initAuth();
+</script>
+
+<style>
+  * { box-sizing: border-box; }
+  #auth-container { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; }
+  .logo { font-family: monospace; font-weight: 600; }
+  .logo span:not(.pro-tag) { color: #8b5cf6; }
+  .pro-tag { background: linear-gradient(90deg,#8b5cf6,#06b6d4); font-size: 10px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; }
+  .auth-btn { padding: 8px 16px; border-radius: 8px; background: #fff; color: #000; border: none; font-weight: 500; cursor: pointer; }
+  #user-info { display: flex; align-items: center; gap: 8px; color: #fff; }
+  .card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 18px; margin-bottom: 14px; color: #fff; }
+  .card h3 { margin: 0 0 4px; font-size: 15px; }
+  .card p { margin: 0 0 12px; font-size: 13px; color: rgba(255,255,255,0.5); }
+  .feature-btn, .unlocked-btn { width: 100%; padding: 12px; border-radius: 10px; border: none; font-weight: 500; cursor: pointer; background: linear-gradient(90deg,#8b5cf6,#06b6d4); color: #fff; }
+  .feature-btn.locked { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); border: 1px dashed rgba(255,255,255,0.2); }
+  .timeline { position: relative; height: 30px; background: rgba(255,255,255,0.05); border-radius: 8px; margin: 10px 0; }
+  .marker { position: absolute; top: 0; width: 6px; height: 100%; border-radius: 3px; background: rgba(139,92,246,0.6); cursor: pointer; }
+  .marker.confirmed { background: #06b6d4; }
+  .anno-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+  .anno-top { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .ts-btn { background: none; border: none; color: #22d3ee; font-family: monospace; font-size: 12px; cursor: pointer; }
+  .confidence { font-size: 10px; color: rgba(255,255,255,0.4); }
+  .label-input { width: 100%; background: transparent; border: none; color: #fff; font-size: 13px; outline: none; }
+  .reasoning { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; }
+  .actions { display: flex; gap: 6px; margin-top: 6px; }
+  .confirm-btn { background: rgba(6,182,212,0.2); color: #22d3ee; border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+  .reject-btn { background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); border: none; padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
+  .save-btn { width: 100%; background: #fff; color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: 500; cursor: pointer; margin-top: 8px; }
+  #upgrade-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); align-items: center; justify-content: center; z-index: 999; }
+  .upgrade-modal-content { background: #0f0f14; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; max-width: 340px; width: 90%; color: #fff; }
+  .upgrade-modal-content button { display: block; width: 100%; padding: 12px; margin-top: 10px; border-radius: 8px; border: none; font-weight: 500; cursor: pointer; }
+  #pay-stripe-btn { background: #fff; color: #000; }
+  #pay-paystack-btn { background: #00C3A0; color: #fff; }
+  #close-upgrade-modal { background: transparent; color: rgba(255,255,255,0.5); }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1a24; border: 1px solid rgba(255,255,255,0.15); padding: 10px 18px; border-radius: 10px; font-size: 13px; color: #fff; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
